@@ -1,0 +1,2 @@
+# paf-baseband2power
+The software is created to convert PAF BMF baseband data into power and integraal over 0.884736 seconds. The number is determined by 1024X1024 samples and the sampling time is 27/32 microseconds = 0.84375.
