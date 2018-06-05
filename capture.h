@@ -33,7 +33,6 @@
 
 /* Configure for capture */
 #define TBUF_NDF          256       // How many data frames (from all frequency chunks) we will record in minor buffer;
-#define SLP_NS            1.08E5    // Sleep time in nano-seconds;
 #define NDF_CHECK         800 // How may data frames we check on each port to get available frequency chunks
 
 /* NUMA node */

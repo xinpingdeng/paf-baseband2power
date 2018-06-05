@@ -24,6 +24,9 @@ void usage ()
 	   " -b  Hexacdecimal shared memory key for outcoming ring buffer\n"
 	   " -c  The name of the directory in which we will record the data\n"
 	   " -d  The index of GPU\n"
+	   " -e  The number of data fram steps of input ring buffer\n"
+	   " -f  The number of channel of output data\n"
+	   " -g  Enable the start-of-data\n"
 	   " -h  show help\n");
 }
 
@@ -37,7 +40,7 @@ int main(int argc, char *argv[])
   conf_t conf;
   
   /* configuration from command line */
-  while((arg=getopt(argc,argv,"a:b:c:d:h:")) != -1)
+  while((arg=getopt(argc,argv,"a:b:c:d:e:f:g:h:")) != -1)
     {
       switch(arg)
 	{
@@ -67,6 +70,18 @@ int main(int argc, char *argv[])
 
 	case 'd':
 	  sscanf(optarg, "%d", &conf.device_id);
+	  break;
+
+	case 'e':
+	  sscanf(optarg, "%lf", &conf.rbufin_ndf);
+	  break;
+
+	case 'f':
+	  sscanf(optarg, "%d", &conf.nchan_out);
+	  break;
+	  
+	case 'g':
+	  sscanf(optarg, "%d", &conf.sod);
 	  break;	  
 	}
     }
@@ -81,13 +96,19 @@ int main(int argc, char *argv[])
     }
   runtime_log = multilog_open("paf_baseband2power", 1);
   multilog_add(runtime_log, fp_log);
-  multilog(runtime_log, LOG_INFO, "START PAF_PROCESS\n");
+  multilog(runtime_log, LOG_INFO, "START PAF_BASEBAND2POWER\n");
   
   /* Here to make sure that if we only expose one GPU into docker container, we can get the right index of it */ 
   int deviceCount;
   CudaSafeCall(cudaGetDeviceCount(&deviceCount));
   if(deviceCount == 1)
     conf.device_id = 0;
+
+  /* Init process */
+  init_baseband2power(&conf);
+  
+  /* Do process */
+  do_baseband2power(conf);
 
   return EXIT_SUCCESS;
 }

@@ -202,7 +202,6 @@ void *sync_thread(void *conf)
 	  pthread_exit(NULL);
 	  return NULL;
 	}
-      //nanosleep(&sleep_time, NULL);     // Sleep for a while to save the usage of CPU    
     }
   
   /* Exit */
