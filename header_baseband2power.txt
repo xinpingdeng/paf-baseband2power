@@ -11,7 +11,8 @@ PRIMARY      unset               # primary node host name
 SECONDARY    unset               # secondary node host name
 FILE_NAME    unset            # full path of the data file
 
-FILE_SIZE    unset            # requested size of data files
+#FILE_SIZE    36288            # requested size of data files
+FILE_SIZE    13440            # requested size of data files
 FILE_NUMBER  0                      # number of data file
 
 # time of the rising edge of the first time sample
@@ -35,7 +36,7 @@ FREQ         unset                   # centre frequency in MHz
 BW           unset             # bandwidth of in MHz (-ve lower sb)
 TSAMP        88473.6               # sampling interval in microseconds
 
-BYTES_PER_SECOND  unset
+BYTES_PER_SECOND  1519.097222
 NBIT         32                      # number of bits per sample, here record float
 NDIM         1                   # dimension of samples (2=complex, 1=real)
 NPOL         1                   # number of polarizations observed

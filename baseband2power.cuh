@@ -21,7 +21,8 @@
 #define NDIM_POL      2
 #define NCHK_NIC      48
 #define NCHAN_CHK     7
-
+#define BLKSZ_SUM1    1024
+//#define BLKSZ_SUM1    512
 #define NBYTE_RT      4 // float
 #define NBYTE_IN      2 // int16_t
 #define NBYTE_OUT     4 // float
@@ -46,9 +47,12 @@ typedef struct conf_t
 
   int64_t *dbuf_in;
   float *dbuf_out;
-  cufftComplex *buf_rt;
+  float *buf_rt1, *buf_rt2;
 
-  dim3 gridsize_unpack, blocksize_unpack;
+  dim3 gridsize_unpack_detect, blocksize_unpack_detect;
+  dim3 gridsize_sum1, blocksize_sum1;
+  dim3 gridsize_sum2, blocksize_sum2;
+  
 }conf_t;
 
 int init_baseband2power(conf_t *conf);

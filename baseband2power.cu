@@ -30,24 +30,39 @@ int init_baseband2power(conf_t *conf)
       fprintf(stderr, "The number of channel is not match %d != %d, which happens at \"%s\", line [%d].\n",conf->nchan_out, NCHAN_CHK * NCHK_NIC, __FILE__, __LINE__);
     }
   conf->bufin_size  = conf->rbufin_ndf * NCHAN_CHK * NCHK_NIC * NSAMP_DF * NPOL_SAMP * NDIM_POL * NBYTE_IN;
-  conf->bufrt_size  = conf->rbufin_ndf * NCHAN_CHK * NCHK_NIC * NSAMP_DF * NPOL_SAMP * NDIM_POL * NBYTE_RT;
+  conf->bufrt_size  = conf->rbufin_ndf * NCHAN_CHK * NCHK_NIC * NSAMP_DF * NBYTE_RT;
   conf->bufout_size = NCHAN_CHK * NCHK_NIC * NBYTE_OUT;
   
   conf->nsamp_in  = conf->rbufin_ndf * NCHAN_CHK * NCHK_NIC * NSAMP_DF;
   conf->nsamp_rt  = conf->nsamp_in;
   conf->nsamp_out = conf->nchan_out;
-
+  
   CudaSafeCall(cudaMalloc((void **)&conf->dbuf_in, conf->bufin_size));
   CudaSafeCall(cudaMalloc((void **)&conf->dbuf_out, conf->bufout_size));
-  CudaSafeCall(cudaMalloc((void **)&conf->buf_rt, conf->bufrt_size));
+  CudaSafeCall(cudaMalloc((void **)&conf->buf_rt1, conf->bufrt_size));
+  CudaSafeCall(cudaMalloc((void **)&conf->buf_rt2, conf->bufrt_size));
   
   /* Prepare the setup of kernels */
-  conf->gridsize_unpack.x = conf->rbufin_ndf;
-  conf->gridsize_unpack.y = NCHK_NIC;
-  conf->gridsize_unpack.z = 1;
-  conf->blocksize_unpack.x = NSAMP_DF; 
-  conf->blocksize_unpack.y = NCHAN_CHK;
-  conf->blocksize_unpack.z = 1;
+  conf->gridsize_unpack_detect.x = conf->rbufin_ndf;
+  conf->gridsize_unpack_detect.y = NCHK_NIC;
+  conf->gridsize_unpack_detect.z = 1;
+  conf->blocksize_unpack_detect.x = NSAMP_DF; 
+  conf->blocksize_unpack_detect.y = NCHAN_CHK;
+  conf->blocksize_unpack_detect.z = 1;
+
+  conf->gridsize_sum1.x = NCHK_NIC * NCHAN_CHK;
+  conf->gridsize_sum1.y = conf->rbufin_ndf * NSAMP_DF / (2 * BLKSZ_SUM1);
+  conf->gridsize_sum1.z = 1;
+  conf->blocksize_sum1.x = BLKSZ_SUM1;
+  conf->blocksize_sum1.y = 1;
+  conf->blocksize_sum1.z = 1;
+
+  conf->gridsize_sum2.x = NCHK_NIC * NCHAN_CHK;
+  conf->gridsize_sum2.y = 1;
+  conf->gridsize_sum2.z = 1;
+  conf->blocksize_sum2.x = conf->rbufin_ndf * NSAMP_DF / (4 * BLKSZ_SUM1);
+  conf->blocksize_sum2.y = 1;
+  conf->blocksize_sum2.z = 1;
 
   /* Attach to input ring buffer */
   conf->hdu_in = dada_hdu_create(runtime_log);
@@ -154,7 +169,8 @@ int destroy_process(conf_t conf)
 
   cudaFree(conf.dbuf_in);
   cudaFree(conf.dbuf_out);
-  cudaFree(conf.buf_rt);
+  cudaFree(conf.buf_rt1);
+  cudaFree(conf.buf_rt2);
 
   dada_cuda_dbunregister(conf.hdu_in);
   dada_hdu_unlock_read(conf.hdu_in);
@@ -168,6 +184,16 @@ int do_baseband2power(conf_t conf)
   CudaSafeCall(cudaSetDevice(conf.device_id));
   size_t curbufsz;
   uint64_t block_id;
+  dim3 gridsize_unpack_detect, blocksize_unpack_detect;
+  dim3 gridsize_sum1, blocksize_sum1;
+  dim3 gridsize_sum2, blocksize_sum2;
+
+  gridsize_unpack_detect = conf.gridsize_unpack_detect;
+  blocksize_unpack_detect = conf.blocksize_unpack_detect;
+  gridsize_sum1 = conf.gridsize_sum1;
+  blocksize_sum1 = conf.blocksize_sum1;
+  gridsize_sum2 = conf.gridsize_sum2;
+  blocksize_sum2 = conf.blocksize_sum2;
   
 #ifdef DEBUG
   struct timespec start, stop;
@@ -180,6 +206,7 @@ int do_baseband2power(conf_t conf)
       clock_gettime(CLOCK_REALTIME, &start);
 #endif
 
+      /* Copy data from host to device */
       CudaSafeCall(cudaMemcpy(conf.dbuf_in, conf.hdu_in->data_block->curbuf, conf.bufin_size, cudaMemcpyHostToDevice));
       
 #ifdef DEBUG
@@ -187,20 +214,24 @@ int do_baseband2power(conf_t conf)
       elapsed_time = (stop.tv_sec - start.tv_sec) + (stop.tv_nsec - start.tv_nsec)/1000000000.0L;
       fprintf(stdout, "Elapsed time to copy %"PRIu64" bytes data is %f second.\n", conf.bufin_size, elapsed_time);
 #endif
+
+      /* Do processing here */
+      unpack_detect_kernel<<<gridsize_unpack_detect, blocksize_unpack_detect, 0>>>(conf.dbuf_in, conf.buf_rt1);
+      sum_kernel<<<gridsize_sum1, blocksize_sum1, blocksize_sum1.x * sizeof(float)>>>(conf.buf_rt1, conf.buf_rt2);
+      sum_kernel<<<gridsize_sum2, blocksize_sum2, blocksize_sum2.x * sizeof(float)>>>(conf.buf_rt2, conf.dbuf_out);
       
+      /* Close previous data block and open a new one to read */
       if(ipcio_close_block_read(conf.hdu_in->data_block, conf.hdu_in->data_block->curbufsz)<0)
       	{
 	  multilog (runtime_log, LOG_ERR, "close_buffer: ipcio_close_block_write failed\n");
 	  fprintf(stderr, "close_buffer: ipcio_close_block_write failed, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
 	  return EXIT_FAILURE;
 	}
-
-      fprintf(stdout, "HERE\n");
-      
       conf.hdu_in->data_block->curbuf = ipcio_open_block_read(conf.hdu_in->data_block, &curbufsz, &block_id);
-      
-      CudaSafeCall(cudaMemcpy(conf.hdu_out->data_block->curbuf, conf.dbuf_out, conf.bufout_size, cudaMemcpyDeviceToHost));
 
+      /* Copy data from device to host */
+      CudaSafeCall(cudaMemcpy(conf.hdu_out->data_block->curbuf, conf.dbuf_out, conf.bufout_size, cudaMemcpyDeviceToHost));
+      /* Close previous data block and open a new one to write */
       if(ipcio_close_block_write(conf.hdu_out->data_block, conf.bufout_size)<0)
 	{
 	  multilog (runtime_log, LOG_ERR, "close_buffer: ipcio_close_block_write failed\n");

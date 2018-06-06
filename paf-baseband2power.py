@@ -97,8 +97,8 @@ def baseband2power():
         os.system('taskset -c {:d} ./paf_baseband2power -a {:s} -b {:s} -c {:s} -d {:d} -e {:d} -f {:d} -g {:d}'.format(baseband2power_cpu, diskdb_key, baseband2power_key, directory, gpu, diskdb_ndf, baseband2power_nchan, baseband2power_sod))
 
 def dbdisk():
-    print ('dada_dbdisk -b {:d} -k {:s} -D {:s} -W'.format(dbdisk_cpu, baseband2power_key, directory))
-    os.system('dada_dbdisk -b {:d} -k {:s} -D {:s} -W'.format(dbdisk_cpu, baseband2power_key, directory))
+    print ('dada_dbdisk -b {:d} -k {:s} -D {:s} -W -s'.format(dbdisk_cpu, baseband2power_key, directory))
+    os.system('dada_dbdisk -b {:d} -k {:s} -D {:s} -W -s'.format(dbdisk_cpu, baseband2power_key, directory))
 
 def main():
     # Create key files

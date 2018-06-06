@@ -7,7 +7,7 @@ conf_fname  = "paf-baseband2power.conf"
 dir_name    = "/beegfs/DENG/docker/"
 gpu         = 1
 visiblegpu  = 1
-nvprof      = 0
+nvprof      = 1
 memcheck    = 0
 dfname      = "2018-04-17-19:22:11.56868_0000000000000000.000000.dada"
 
