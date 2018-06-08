@@ -29,11 +29,11 @@ int init_baseband2power(conf_t *conf)
       multilog(runtime_log, LOG_ERR, "Channel number mismatch\n");
       fprintf(stderr, "The number of channel is not match %d != %d, which happens at \"%s\", line [%d].\n",conf->nchan_out, NCHAN_CHK * NCHK_NIC, __FILE__, __LINE__);
     }
-  conf->bufin_size  = conf->rbufin_ndf * NCHAN_CHK * NCHK_NIC * NSAMP_DF * NPOL_SAMP * NDIM_POL * NBYTE_IN;
-  conf->bufrt_size  = conf->rbufin_ndf * NCHAN_CHK * NCHK_NIC * NSAMP_DF * NBYTE_RT;
+  conf->bufin_size  = conf->bufin_ndf * NCHAN_CHK * NCHK_NIC * NSAMP_DF * NPOL_SAMP * NDIM_POL * NBYTE_IN;
+  conf->bufrt_size  = conf->bufin_ndf * NCHAN_CHK * NCHK_NIC * NSAMP_DF * NBYTE_RT;
   conf->bufout_size = NCHAN_CHK * NCHK_NIC * NBYTE_OUT;
   
-  conf->nsamp_in  = conf->rbufin_ndf * NCHAN_CHK * NCHK_NIC * NSAMP_DF;
+  conf->nsamp_in  = conf->bufin_ndf * NCHAN_CHK * NCHK_NIC * NSAMP_DF;
   conf->nsamp_rt  = conf->nsamp_in;
   conf->nsamp_out = conf->nchan_out;
   
@@ -43,7 +43,7 @@ int init_baseband2power(conf_t *conf)
   CudaSafeCall(cudaMalloc((void **)&conf->buf_rt2, conf->bufrt_size));
   
   /* Prepare the setup of kernels */
-  conf->gridsize_unpack_detect.x = conf->rbufin_ndf;
+  conf->gridsize_unpack_detect.x = conf->bufin_ndf;
   conf->gridsize_unpack_detect.y = NCHK_NIC;
   conf->gridsize_unpack_detect.z = 1;
   conf->blocksize_unpack_detect.x = NSAMP_DF; 
@@ -51,7 +51,7 @@ int init_baseband2power(conf_t *conf)
   conf->blocksize_unpack_detect.z = 1;
 
   conf->gridsize_sum1.x = NCHK_NIC * NCHAN_CHK;
-  conf->gridsize_sum1.y = conf->rbufin_ndf * NSAMP_DF / (2 * BLKSZ_SUM1);
+  conf->gridsize_sum1.y = conf->bufin_ndf * NSAMP_DF / (2 * BLKSZ_SUM1);
   conf->gridsize_sum1.z = 1;
   conf->blocksize_sum1.x = BLKSZ_SUM1;
   conf->blocksize_sum1.y = 1;
@@ -60,7 +60,7 @@ int init_baseband2power(conf_t *conf)
   conf->gridsize_sum2.x = NCHK_NIC * NCHAN_CHK;
   conf->gridsize_sum2.y = 1;
   conf->gridsize_sum2.z = 1;
-  conf->blocksize_sum2.x = conf->rbufin_ndf * NSAMP_DF / (4 * BLKSZ_SUM1);
+  conf->blocksize_sum2.x = conf->bufin_ndf * NSAMP_DF / (4 * BLKSZ_SUM1);
   conf->blocksize_sum2.y = 1;
   conf->blocksize_sum2.z = 1;
 
@@ -248,6 +248,9 @@ int do_baseband2power(conf_t conf)
 int register_header(conf_t *conf)
 {
   size_t hdrsz;
+  double scale;
+  conf->tsamp_out = NSAMP_DF * conf->bufin_ndf * TSAMP;
+  //fprintf(stdout, "%f\n", conf->tsamp_out);
   
   conf->hdrbuf_in  = ipcbuf_get_next_read(conf->hdu_in->header_block, &hdrsz);
   if(hdrsz != DADA_HDR_SIZE)
@@ -262,7 +265,27 @@ int register_header(conf_t *conf)
       fprintf(stderr, "Error getting header_buf, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
-  
+  if (ascii_header_get(conf->hdrbuf_in, "TSAMP", "%lf", &(conf->tsamp_in)) < 0)  
+    {
+      multilog(runtime_log, LOG_ERR, "Error getting TSAMP, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      fprintf(stderr, "Error getting TSAMP, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      return EXIT_FAILURE;
+    }    
+  if (ascii_header_get(conf->hdrbuf_in, "BYTES_PER_SECOND", "%lf", &(conf->bps_in)) < 0)  
+    {
+      multilog(runtime_log, LOG_ERR, "Error getting BYTES_PER_SECOND, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      fprintf(stderr, "Error getting BYTES_PER_SECOND, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      return EXIT_FAILURE;
+    }    
+  if (ascii_header_get(conf->hdrbuf_in, "FILE_SIZE", "%lf", &(conf->fsz_in)) < 0)  
+    {
+      multilog(runtime_log, LOG_ERR, "Error getting FILE_SIZE, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      fprintf(stderr, "Error getting FILE_SIZE, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      return EXIT_FAILURE;
+    }
+
+  scale = conf->tsamp_in / conf->tsamp_out;
+  //fprintf(stdout, "%f\t%f\t%f\n", conf->tsamp_in, conf->tsamp_out, scale);
   conf->hdrbuf_out = ipcbuf_get_next_write(conf->hdu_out->header_block);
   if (!conf->hdrbuf_out)
     {
@@ -270,7 +293,26 @@ int register_header(conf_t *conf)
       fprintf(stderr, "Error getting header_buf, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
-  memcpy(conf->hdrbuf_out, conf->hdrbuf_in, DADA_HDR_SIZE);
+  memcpy(conf->hdrbuf_out, conf->hdrbuf_in, DADA_HDR_SIZE);  
+  if (ascii_header_set(conf->hdrbuf_out, "TSAMP", "%lf", conf->tsamp_out) < 0)  
+    {
+      multilog(runtime_log, LOG_ERR, "Error getting TSAMP, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      fprintf(stderr, "Error getting TSAMP, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      return EXIT_FAILURE;
+    }    
+  if (ascii_header_set(conf->hdrbuf_out, "BYTES_PER_SECOND", "%lf", conf->bps_in *scale) < 0)  
+    {
+      multilog(runtime_log, LOG_ERR, "Error getting BYTES_PER_SECOND, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      fprintf(stderr, "Error getting BYTES_PER_SECOND, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      return EXIT_FAILURE;
+    }    
+  if (ascii_header_set(conf->hdrbuf_out, "FILE_SIZE", "%lf", conf->fsz_in * scale) < 0)  
+    {
+      multilog(runtime_log, LOG_ERR, "Error getting FILE_SIZE, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      fprintf(stderr, "Error getting FILE_SIZE, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      return EXIT_FAILURE;
+    }
+
   if (ipcbuf_mark_filled (conf->hdu_out->header_block, DADA_HDR_SIZE) < 0)
     {
       multilog(runtime_log, LOG_ERR, "Could not mark filled header block\n");

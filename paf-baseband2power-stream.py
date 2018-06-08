@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# ./paf-baseband2power.py -a paf-baseband2power.conf -b /beegfs/DENG/docker/ -c 0 -d 0 -e 0 -f 10
+# ./paf-baseband2power.py -a paf-baseband2power.conf -b /beegfs/DENG/JUNE/ -c 0 -d 0 -e 0 -f 10
 
 import os, time, threading, ConfigParser, argparse, socket, json, struct, sys, datetime, pytz
 
@@ -105,7 +105,7 @@ parser.add_argument('-e', '--memcheck', type=int, nargs='+',
 parser.add_argument('-f', '--length', type=float, nargs='+',
                     help='Length of data capture.')
 
-directory = "/beegfs/DENG/docker"
+directory = "/beegfs/DENG/JUNE"
 def receive_metadata(length, nbeam):
     # Bind to multicast
     multicast_group = '224.1.1.1'
@@ -152,7 +152,9 @@ def receive_metadata(length, nbeam):
                 direction_file.write(str(bat2utc(str(data['timestamp']))))  
                 direction_file.write("\t")
                 for item in range(nbeam):
-                    direction_file.write(str(data['beams_direction']['beam{:02d}'.format(item+1)]))
+                    direction_file.write(str(data['beams_direction']['beam{:02d}'.format(item+1)][0]))
+                    direction_file.write('\t')
+                    direction_file.write(str(data['beams_direction']['beam{:02d}'.format(item+1)][1]))
                     direction_file.write('\t')
                 direction_file.write('\n')
         metadata_file.write("\n")

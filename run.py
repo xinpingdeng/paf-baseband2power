@@ -8,7 +8,7 @@ import os
 script_name = "paf-baseband2power-stream.py"
 conf_fname  = "paf-baseband2power-stream.conf"
 
-dir_name    = "/beegfs/DENG/docker/"
+dir_name    = "/beegfs/DENG/JUNE/"
 numa        = 1
 visiblegpu  = 1
 nvprof      = 1

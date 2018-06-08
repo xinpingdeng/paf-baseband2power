@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 	  break;
 
 	case 'e':
-	  sscanf(optarg, "%lf", &conf.rbufin_ndf);
+	  sscanf(optarg, "%lf", &conf.bufin_ndf);
 	  break;
 
 	case 'f':
@@ -110,5 +110,7 @@ int main(int argc, char *argv[])
   /* Do process */
   do_baseband2power(conf);
 
+  multilog(runtime_log, LOG_INFO, "FINISH PAF_BASEBAND2POWER\n\n");
+  
   return EXIT_SUCCESS;
 }

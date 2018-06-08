@@ -753,12 +753,25 @@ int register_header(conf_t *conf)
       return EXIT_FAILURE;
     }
 
-  //multilog(runtime_log, LOG_INFO, "UTC_START:\t%s\n", conf->utc_start);
-  //fprintf(stdout, "Setup UTC_START at capture stage:\t%s\n", conf->utc_start);
-  if (ascii_header_set(hdrbuf, "UTC_START", "%s", conf->utc_start) < 0)  // Here we only set the UTC with integer period, not set MJD. fraction of period is shown as obs_offset
+  if (ascii_header_set(hdrbuf, "UTC_START", "%s", conf->utc_start) < 0)  
     {
       multilog(runtime_log, LOG_ERR, "Error setting UTC_START, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       fprintf(stderr, "Error setting UTC_START, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      return EXIT_FAILURE;
+    }
+  if (ascii_header_get(hdrbuf, "BYTES_PER_SECOND", "%lf", &(conf->bytes_per_second)) < 0)  
+    {
+      multilog(runtime_log, LOG_ERR, "Error getting BYTES_PER_SECOND, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      fprintf(stderr, "Error getting BYTES_PER_SECOND, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      return EXIT_FAILURE;
+    }
+  //conf->file_size = conf->bytes_per_second * (conf->length - 8);
+  conf->file_size = conf->bytes_per_second * conf->length;
+  
+  if (ascii_header_set(hdrbuf, "FILE_SIZE", "%.0lf", conf->file_size) < 0)  
+    {
+      multilog(runtime_log, LOG_ERR, "Error setting FILE_SIZE, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      fprintf(stderr, "Error setting FILE_SIZE, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
   

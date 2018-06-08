@@ -15,7 +15,7 @@
 
 import os, argparse
 
-# ./do_launch.py -a 20 -b 0 -c 80000000000 -d /beegfs/DENG/docker -e /home/pulsar -f 50000 -g 50000 -i searchmode
+# ./do_launch.py -a 20 -b 0 -c 80000000000 -d /beegfs/DENG/JUNE -e /home/pulsar -f 50000 -g 50000 -i searchmode
 # Read in command line arguments
 parser = argparse.ArgumentParser(description='Launch the pipeline to catpure and fold data stream from BMF or from PSRDADA file')
 parser.add_argument('-a', '--length', type=float, nargs='+',

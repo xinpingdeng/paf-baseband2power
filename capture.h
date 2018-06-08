@@ -75,7 +75,9 @@ typedef struct conf_t
   char efname[MSTR_LEN];
 
   double length;
-
+  double file_size;
+  double bytes_per_second;
+  
   char dir[MSTR_LEN];
   struct sock_t sock[MPORT_NIC];
 }conf_t;

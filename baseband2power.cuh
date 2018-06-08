@@ -26,6 +26,7 @@
 #define NBYTE_RT      4 // float
 #define NBYTE_IN      2 // int16_t
 #define NBYTE_OUT     4 // float
+#define TSAMP         0.84375  // micro second
 
 typedef struct conf_t
 {
@@ -41,14 +42,17 @@ typedef struct conf_t
   size_t nsamp_in, nsamp_rt, nsamp_out;
   size_t hdrsz;
   
-  size_t bufin_ndf;
-  double rbufin_ndf;
+  double bufin_ndf;
   int nchan_out;
 
   int64_t *dbuf_in;
   float *dbuf_out;
   float *buf_rt1, *buf_rt2;
 
+  double tsamp_out, tsamp_in;
+  double fsz_out, fsz_in;
+  double bps_out, bps_in;
+  
   dim3 gridsize_unpack_detect, blocksize_unpack_detect;
   dim3 gridsize_sum1, blocksize_sum1;
   dim3 gridsize_sum2, blocksize_sum2;
