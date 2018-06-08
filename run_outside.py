@@ -3,32 +3,25 @@
 import os
 
 stream = 1
-dir_name    = "/beegfs/DENG/JUNE/"
-numa        = 1
+ddir    = "/beegfs/DENG/JUNE/"
+hdir    = '/home/pulsar/'
+memsize = 80000000000
+uid     = 50000
+gid     = 50000
+numa    = 1
+gpu     = numa
+length  = 100
+nbeam   = 9
+dname   = paf-baseband2power
+
 visiblegpu  = 1
-nvprof      = 1
+nvprof      = 0
 memcheck    = 0
-length      = 100
-nbeam       = 9
 dfname      = "2018-04-17-19:22:11.56868_0000000000000000.000000.dada"
 
-if stream:
-    script_name = "paf-baseband2power-stream.py"
-    conf_fname  = "paf-baseband2power-stream.conf"
-else:
-    script_name = "paf-baseband2power-file.py"
-    conf_fname  = "paf-baseband2power-file.conf"    
+dvolume = '{:s}:{:s}'.format(ddir, ddir)
+hvolume = '{:s}:{:s}'.format(hdir, hdir)
 
-if nvprof == 1:
-    if stream:
-        com_line = "nvprof --profile-child-processes ./{:s} -a {:s} -b {:s} -c {:d} -d {:s} -e {:d} -f {:f} -g {:d}".format(script_name, conf_fname, dir_name, numa, str(visiblegpu), memcheck, length, nbeam)
-    else:
-        com_line = "nvprof --profile-child-processes ./{:s} -a {:s} -b {:s} -c {:d} -d {:s} -e {:d} -f {:s}".format(script_name, conf_fname, dir_name, numa, str(visiblegpu), memcheck, dfname)
-else:
-    if stream:
-        com_line = "./{:s} -a {:s} -b {:s} -c {:d} -d {:s} -e {:d} -f {:f} -g {:d}".format(script_name, conf_fname, dir_name, numa, str(visiblegpu), memcheck, length, nbeam)
-    else:
-        com_line = "./{:s} -a {:s} -b {:s} -c {:d} -d {:s} -e {:d} -f {:s}".format(script_name, conf_fname, dir_name, numa, str(visiblegpu), memcheck, dfname)
-
+com_line = "docker run -it --rm --runtime=nvidia -e DISPLAY --net=host -v {:s} -v {:s} -u {:d}:{:d} -e NVIDIA_VISIBLE_DEVICES={:s} -e NVIDIA_DRIVER_CAPABILITIES=all --ulimit memlock={:d} --name {:s} xinpingdeng/{:s} -a {:s} -b {:s} -c {:d} -d {:s} -e {:d} -f {:f} -g {:d}".format(dvolume, hvolume, uid, gid, str(gpu), memsize, dname, dname, conf_fname, dir_name, numa, str(visiblegpu), memcheck, length, nbeam)
 print com_line
 os.system(com_line)
