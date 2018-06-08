@@ -112,12 +112,14 @@ def receive_metadata(length, nbeam):
     multicast_group = '224.1.1.1'
     server_address = ('', 5007)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # Create the socket
+
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(server_address) # Bind to the server address
+
     group = socket.inet_aton(multicast_group)
     mreq = struct.pack('4sL', group, socket.INADDR_ANY)
     sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)  # Tell the operating system to add the socket to the multicast group on all interfaces.
-    #sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, mreq)
-
+    
     # Define file names and open files to write
     start_time = utc_now()
     time_str = "%Y-%m-%d-%H:%M:%S"

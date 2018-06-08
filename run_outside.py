@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, argparse
+import os, argparse, socket
 
 # ./run_outside.py -a /beegfs/DENG/JUNE/ -b 100 -c 1 -d 9
 
@@ -21,13 +21,8 @@ length     = args.length[0]
 nbeam      = args.nbeam[0]
 numa       = args.numa[0]
 
-#ddir       = "/beegfs/DENG/JUNE/"
-#length     = 100
-#nbeam      = 9
-#numa       = 1
-
 hdir       = "/home/pulsar"
-memsize    = 80000000000
+memsize    = 100000000000
 uid        = 50000
 gid        = 50000
 gpu        = numa
@@ -36,10 +31,22 @@ conf_fname = "paf-baseband2power-stream.conf"
 visiblegpu  = 1
 memcheck    = 0
 
+node_id = int((socket.gethostname())[7])
+
+if node_id < 2:
+    ddir = "{:s}/beam{:d}".format(ddir, node_id * 2 + numa)
+elif node_id > 2:
+    ddir = "{:s}/beam{:d}".format(ddir, (node_id - 1) * 2 + numa)
+else:
+    print "We do not use pacifix2 ..."
+    exit()
+    
+if not os.path.exists(ddir):
+    os.mkdir(ddir)
+
 dvolume = '{:s}:{:s}'.format(ddir, ddir)
 hvolume = '{:s}:{:s}'.format(hdir, hdir)
 
-#com_line = "docker run -it --rm --runtime=nvidia -e DISPLAY --net=host -v {:s} -v {:s} -u {:d}:{:d} -e NVIDIA_VISIBLE_DEVICES={:s} -e NVIDIA_DRIVER_CAPABILITIES=all --ulimit memlock={:d} --name {:s} {:s} -a {:s} -b {:s} -c {:d} -d {:s} -e {:d} -f {:f} -g {:d}".format(dvolume, hvolume, uid, gid, str(gpu), memsize, dname, dname, conf_fname, ddir, numa, str(visiblegpu), memcheck, length, nbeam)
-com_line = "docker run -it --rm --runtime=nvidia -e DISPLAY --net=host -v {:s} -u {:d}:{:d} -e NVIDIA_VISIBLE_DEVICES={:s} -e NVIDIA_DRIVER_CAPABILITIES=all --ulimit memlock={:d} --name {:s} {:s} -a {:s} -b {:s} -c {:d} -d {:s} -e {:d} -f {:f} -g {:d}".format(dvolume, uid, gid, str(gpu), memsize, dname, dname, conf_fname, ddir, numa, str(visiblegpu), memcheck, length, nbeam)
+com_line = "docker run -it --rm --runtime=nvidia -e DISPLAY --net=host -v {:s} -v {:s} -u {:d}:{:d} -e NVIDIA_VISIBLE_DEVICES={:s} -e NVIDIA_DRIVER_CAPABILITIES=all --ulimit memlock={:d} --name {:s}{:d} xinpingdeng/{:s} -a {:s} -b {:s} -c {:d} -d {:s} -e {:d} -f {:f} -g {:d}".format(dvolume, hvolume, uid, gid, str(gpu), memsize, dname, numa, dname, conf_fname, ddir, numa, str(visiblegpu), memcheck, length, nbeam)
 print com_line
 os.system(com_line)
