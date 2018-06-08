@@ -303,7 +303,7 @@ int init_capture(conf_t *conf, char *ip, int *ports)
   for(i = 0; i < NPORT_NIC; i++)  // Get the active sock
     if(conf->sock[i].active)
       break;
-  acquire_start_time(conf->sock[i].hdr_start, conf->efname, conf->utc_start, &(conf->picoseconds));
+  acquire_start_time(conf->sock[i].hdr_start, conf->efname, conf->utc_start, &conf->mjd_start, &(conf->picoseconds));
   if(register_header(conf))
     {
       multilog(runtime_log, LOG_ERR, "Header register failed, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
@@ -762,6 +762,13 @@ int register_header(conf_t *conf)
       return EXIT_FAILURE;
     }
   
+  if (ascii_header_set(hdrbuf, "MJD_START", "%lf", conf->mjd_start) < 0)  // Here we only set the UTC with integer period, not set MJD. fraction of period is shown as obs_offset
+    {
+      multilog(runtime_log, LOG_ERR, "Error setting MJD_START, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      fprintf(stderr, "Error setting MJD_START, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      return EXIT_FAILURE;
+    }
+  
   //if (ascii_header_set(hdrbuf, "PICOSECONDS", "%"PRIu64"", conf->picoseconds) < 0)  // Here we only set the UTC with integer period, not set MJD. fraction of period is shown as obs_offset
   if (ascii_header_set(hdrbuf, "PICOSECONDS", "%"PRIu64, conf->picoseconds) < 0)  // Here we only set the UTC with integer period, not set MJD. fraction of period is shown as obs_offset
     {
@@ -788,7 +795,7 @@ int register_header(conf_t *conf)
   return EXIT_SUCCESS;
 }
 
-int acquire_start_time(hdr_t hdr_start, char efname[MSTR_LEN], char utc_start[MSTR_LEN], uint64_t *picoseconds)
+int acquire_start_time(hdr_t hdr_start, char efname[MSTR_LEN], char utc_start[MSTR_LEN], double *mjd_start, uint64_t *picoseconds)
 {
   int epoch;
   FILE *fp = NULL;
@@ -819,7 +826,8 @@ int acquire_start_time(hdr_t hdr_start, char efname[MSTR_LEN], char utc_start[MS
   sec_prd = hdr_start.idf * TDF_SEC;  // seconds in one period
   sec = SECDAY * mjd_epoch + hdr_start.sec + floor(sec_prd);  // int seconds from 1970-01-01
   strftime (utc_start, MSTR_LEN, DADA_TIMESTR, gmtime(&sec)); // String start time without fraction second
-
+  *mjd_start = sec/SECDAY + MJD1970;                          // UTC_START = MJD_START
+  
   /* Faction of second */
   micoseconds  = 1.0E6 * (sec_prd - floor(sec_prd)); // We may have 1 picosecond deviation here, round to intergal will fix that;
   *picoseconds = 1E6 * round(micoseconds); // We know for sure that the timing resolution is 108 microsecond, we can not get finer timing stamps than 1 microsecond;
@@ -835,6 +843,7 @@ int acquire_start_time(hdr_t hdr_start, char efname[MSTR_LEN], char utc_start[MS
   multilog(runtime_log, LOG_INFO, "MICROSECONDS:\t%f\n", micoseconds);
   
   multilog(runtime_log, LOG_INFO, "UTC_START:\t%s\n", utc_start);
+  multilog(runtime_log, LOG_INFO, "MJD_START:\t%f\n", *mjd_start);
   multilog(runtime_log, LOG_INFO, "PICOSECONDS:\t%"PRIu64"\n", *picoseconds);
   
   fprintf(stdout, "SECOND_IN_PERIOD:\t%.12f\tUTC_START:\t%s\tMICROSECONDS:\t%f\tPICOSECONDS:\t%"PRIu64"\n", sec_prd, utc_start, micoseconds, *picoseconds);

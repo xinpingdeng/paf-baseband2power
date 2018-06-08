@@ -68,6 +68,7 @@ typedef struct conf_t
   int hdr;
 
   char utc_start[MSTR_LEN];
+  double mjd_start;
   uint64_t picoseconds;
   double freq;
   char hfname[MSTR_LEN];
@@ -99,5 +100,5 @@ int statistics(conf_t conf);
 int init_rbuf(conf_t *conf);
 int init_capture(conf_t *conf, char *ip, int *ports);
 int register_header(conf_t *conf);
-int acquire_start_time(hdr_t hdr_start, char efname[MSTR_LEN], char utc_start[MSTR_LEN], uint64_t *picoseconds);
+int acquire_start_time(hdr_t hdr_start, char efname[MSTR_LEN], char utc_start[MSTR_LEN], double *mjd_start, uint64_t *picoseconds);
 #endif
