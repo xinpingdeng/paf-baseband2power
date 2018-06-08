@@ -11,7 +11,8 @@ PRIMARY      unset               # primary node host name
 SECONDARY    unset               # secondary node host name
 FILE_NAME    unset            # full path of the data file
 
-FILE_SIZE    1344            # requested size of data files
+#FILE_SIZE    41015            # requested size of data files
+FILE_SIZE    39496            # requested size of data files
 FILE_NUMBER  0                      # number of data file
 
 # time of the rising edge of the first time sample

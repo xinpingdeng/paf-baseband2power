@@ -104,8 +104,9 @@ parser.add_argument('-e', '--memcheck', type=int, nargs='+',
                     help='To run cuda-memcheck or not.')
 parser.add_argument('-f', '--length', type=float, nargs='+',
                     help='Length of data capture.')
+parser.add_argument('-g', '--nbeam', type=int, nargs='+',
+                    help='Number of beams.')
 
-directory = "/beegfs/DENG/JUNE"
 def receive_metadata(length, nbeam):
     # Bind to multicast
     multicast_group = '224.1.1.1'
@@ -140,14 +141,15 @@ def receive_metadata(length, nbeam):
         #old_time = bat2utc(str(data['timestamp']))
         
         on_source1 = data['pk01']['on_source']
+        print on_source1
         if on_source1 != on_source0:
             interval_file.write(str(bat2utc(str(data['timestamp']))))  # To record on-source time interval
             interval_file.write("\t")
             on_source0 = on_source1
-            
-            if on_source1 == "flase":  # To end current on-source interval
+                            
+            if on_source1 == "false":  # To end current on-source interval
                 interval_file.write("\n")
-                
+
             if on_source1 == 'true':   # To record the direction of "nbeam" beams when the telescope is on source
                 direction_file.write(str(bat2utc(str(data['timestamp']))))  
                 direction_file.write("\t")
@@ -177,6 +179,7 @@ visiblegpu   = args.visiblegpu[0]
 directory    = args.directory[0]
 memcheck     = args.memcheck[0]
 length       = args.length[0]
+nbeam        = args.nbeam[0]
 
 hdr  = 0
 freq = 1340.5
@@ -227,6 +230,9 @@ baseband2power_cpu        = ncpu_numa * numa + capture_ncpu
 # Dbdisk configuration
 dbdisk_cpu = ncpu_numa * numa + capture_ncpu + 1
 
+def metadata(length, nbeam):
+    receive_metadata(length, nbeam)
+    
 def capture():
 #    time.sleep(sleep_time)
     os.system("./paf_capture -a {:s} -b {:s} -c {:d} -d {:d} -e {:d} -f {:s} -g {:s} -i {:f} -j {:f} -k {:s}".format(capture_key, capture_sod, capture_ndf, hdr, nic, capture_hfname, capture_efname, freq, length, directory))
@@ -268,15 +274,18 @@ def main():
 
     os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(capture_key, capture_rbufsz, capture_nbuf, capture_nreader))
     os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(baseband2power_key, baseband2power_rbufsz, baseband2power_nbuf, baseband2power_nreader))
-    
+
+    t_metadata = threading.Thread(target = receive_metadata, args=(length, nbeam,))
     t_capture  = threading.Thread(target = capture)
     t_baseband2power = threading.Thread(target = baseband2power)
     t_dbdisk    = threading.Thread(target = dbdisk)
-    
+
+    t_metadata.start()
     t_capture.start()
     t_baseband2power.start()
     t_dbdisk.start()
-    
+
+    t_metadata.join()
     t_capture.join()
     t_baseband2power.join()
     t_dbdisk.join()
