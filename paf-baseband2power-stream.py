@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# ./paf-baseband2power.py -a paf-baseband2power.conf -b /beegfs/DENG/JUNE/ -c 0 -d 0 -e 0 -f 10
+# ./paf-baseband2power.py -a paf-baseband2power.conf -b /beegfs/DENG/JUNE/ -c 0 -d 0 -e 0 -f 10 -g 9
 
 import os, time, threading, ConfigParser, argparse, socket, json, struct, sys, datetime, pytz
 
