@@ -138,10 +138,22 @@ def receive_metadata(length, nbeam):
         print "Metadata capture, {:f} seconds of {:f} seconds ...".format(time.time() - start_time, length)
         pkt, address = sock.recvfrom(1<<16)
         data = json.loads(pkt)
+
+        # Record metadata
         metadata_file.write(str(data))  # To record metadata with original format
-        #print (bat2utc(str(data['timestamp'])) -old_time) * 86400.0
-        #old_time = bat2utc(str(data['timestamp']))
-        
+        metadata_file.write("\n")
+
+        # Record direction of nbeams
+        direction_file.write(str(bat2utc(str(data['timestamp']))))  
+        direction_file.write("\t")
+        for item in range(nbeam):
+            direction_file.write(str(data['beams_direction']['beam{:02d}'.format(item+1)][0]))
+            direction_file.write('\t')
+            direction_file.write(str(data['beams_direction']['beam{:02d}'.format(item+1)][1]))
+            direction_file.write('\t')
+        direction_file.write('\n')
+
+        # Record on-source time interval and direction of nbeams at the beginning of on-source
         on_source1 = data['pk01']['on_source']
         print on_source1
         if on_source1 != on_source0:
@@ -153,15 +165,20 @@ def receive_metadata(length, nbeam):
                 interval_file.write("\n")
 
             if on_source1 == 'true':   # To record the direction of "nbeam" beams when the telescope is on source
-                direction_file.write(str(bat2utc(str(data['timestamp']))))  
-                direction_file.write("\t")
+                #direction_file.write(str(bat2utc(str(data['timestamp']))))  
+                #direction_file.write("\t")
                 for item in range(nbeam):
-                    direction_file.write(str(data['beams_direction']['beam{:02d}'.format(item+1)][0]))
-                    direction_file.write('\t')
-                    direction_file.write(str(data['beams_direction']['beam{:02d}'.format(item+1)][1]))
-                    direction_file.write('\t')
-                direction_file.write('\n')
-        metadata_file.write("\n")
+                    #direction_file.write(str(data['beams_direction']['beam{:02d}'.format(item+1)][0]))
+                    #direction_file.write('\t')
+                    #direction_file.write(str(data['beams_direction']['beam{:02d}'.format(item+1)][1]))
+                    #direction_file.write('\t')
+                    
+                    interval_file.write(str(data['beams_direction']['beam{:02d}'.format(item+1)][0]))
+                    interval_file.write('\t')
+                    interval_file.write(str(data['beams_direction']['beam{:02d}'.format(item+1)][1]))
+                    interval_file.write('\t')
+                #direction_file.write('\n')
+        
 
     sock.close()
     metadata_file.close()
