@@ -291,6 +291,8 @@ def main():
     baseband2power_key_file.writelines("key {:s}\n".format(baseband2power_key))
     baseband2power_key_file.close()
 
+    print "HERE"
+
     os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(capture_key, capture_rbufsz, capture_nbuf, capture_nreader))
     os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(baseband2power_key, baseband2power_rbufsz, baseband2power_nbuf, baseband2power_nreader))
 

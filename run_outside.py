@@ -47,6 +47,11 @@ if not os.path.exists(ddir):
 dvolume = '{:s}:{:s}'.format(ddir, ddir)
 hvolume = '{:s}:{:s}'.format(hdir, hdir)
 
-com_line = "docker run -it --rm --runtime=nvidia -e DISPLAY --net=host -v {:s} -v {:s} -u {:d}:{:d} -e NVIDIA_VISIBLE_DEVICES={:s} -e NVIDIA_DRIVER_CAPABILITIES=all --ulimit memlock={:d} --name {:s}{:d} xinpingdeng/{:s} -a {:s} -b {:s} -c {:d} -d {:s} -e {:d} -f {:f} -g {:d}".format(dvolume, hvolume, uid, gid, str(gpu), memsize, dname, numa, dname, conf_fname, ddir, numa, str(visiblegpu), memcheck, length, nbeam)
-print com_line
+container_name = "{:s}{:d}".format(dname, numa)
+
+#if os.system("docker ps -aq -f status=exited -f name={:s}".format(container_name)) and os.system("docker ps -q -f name={:s}".format(container_name)):
+#    os.system("docker rm {:s}".format(container_name))
+   
+com_line = "docker run --rm --runtime=nvidia -e DISPLAY --net=host -v {:s} -v {:s} -u {:d}:{:d} -e NVIDIA_VISIBLE_DEVICES={:s} -e NVIDIA_DRIVER_CAPABILITIES=all --ulimit memlock={:d} --name {:s} xinpingdeng/{:s} -a {:s} -b {:s} -c {:d} -d {:s} -e {:d} -f {:f} -g {:d}".format(dvolume, hvolume, uid, gid, str(gpu), memsize, container_name, dname, conf_fname, ddir, numa, str(visiblegpu), memcheck, length, nbeam)
+#print com_line
 os.system(com_line)
