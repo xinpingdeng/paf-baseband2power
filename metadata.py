@@ -4,6 +4,9 @@ import socket
 import json
 import datetime 
 import pytz
+import struct
+import time
+import argparse
 
 def utc_now():
     """
@@ -78,29 +81,53 @@ def bat2utc(bat, dutc=None):
     utcDJD = utcDJDs/86400.0
     return utcDJD + 2415020 - 2400000.5
 
-NBEAM = 36
+if __name__ == "__main__":    
+    parser = argparse.ArgumentParser(description='Record metadata from multicast')
+    parser.add_argument('-a', '--length', type=float, nargs='+',
+    help='The length for metadata recording')
+    parser.add_argument('-b', '--nbeam', type=int, nargs='+',
+                        help='To record the direction of this number of beams')
 
-if __name__ == "__main__":
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-    sock.bind(("134.104.74.36", 26666))
-
-    fp = open('{:s}.txt'.format(utc_now().strftime("%Y%m%d%H%M")), 'w')
-    #start_time = utc_now()
+    args   = parser.parse_args()
+    nbeam  = args.nbeam[0]
+    length = args.length[0]
     
-    while True:
+    # Bind to multicast
+    multicast_group = '224.1.1.1'
+    server_address = ('', 5007)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # Create the socket
+
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind(server_address) # Bind to the server address
+
+    group = socket.inet_aton(multicast_group)
+    mreq = struct.pack('4sL', group, socket.INADDR_ANY)
+    sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)  # Tell the operating system to add the socket to the multicast group on all interfaces.
+
+    direction_fp = open('{:s}.direction'.format(utc_now().strftime("%Y-%m-%d-%H:%M:%S")), 'w')
+    metadata_fp = open('{:s}.metadata'.format(utc_now().strftime("%Y-%m-%d-%H:%M:%S")), 'w')
+
+    start_time = time.time()
+    while ((time.time() - start_time) < length):
         pkt, addr = sock.recvfrom(1<<16) 
         data = json.loads(pkt)#['beams_direction']#['beam01']
-        metadata = []
-        metadata.append("{:.10f}\t".format(bat2utc(str(data['timestamp']))))
-        for item in range(NBEAM):
-            beam_position = data['beams_direction']['beam{:02d}'.format(item+1)]
-            metadata.append("{:s}\t{:s}\t".format(beam_position[0], beam_position[1]))
-        metadata.append('\n')
+        #print "Record metadata, current BMF BAT timestamp is {:s} ...".format(str(data['timestamp']))
+        print "Metadata capture, {:f} seconds of {:f} seconds ...".format(time.time() - start_time, length)
         
-        fp.writelines(metadata)
-        #if((utc_now() - start_time) > datetime.timedelta(minutes = 1)):
-        #    fp.close()
-        #
-        #    start_time = utc_now()
-        #    fp = open('{:s}.txt'.format(utc_now().strftime("%Y%m%d%H%M")), 'w')
-    fp.close()
+        # Record metadata
+        metadata_fp.write(str(data))  # To record metadata with original format
+        metadata_fp.write("\n")
+
+        # Record beam direction for all beams, it is in decimal RA and DEC 
+        direction_fp.write(str(bat2utc(str(data['timestamp']))))  
+        direction_fp.write("\t")
+        direction_fp.write(data['target_name'])
+        for item in range(nbeam):
+            direction_fp.write(str(data['beams_direction']['beam{:02d}'.format(item+1)][0]))
+            direction_fp.write("\t")
+            direction_fp.write(str(data['beams_direction']['beam{:02d}'.format(item+1)][1]))
+            direction_fp.write("\t")
+        direction_fp.write("\n")
+    direction_fp.close()
+    metadata_fp.close()
+    sock.close()

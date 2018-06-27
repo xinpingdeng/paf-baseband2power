@@ -51,41 +51,70 @@ def ssh(host, command):
     else:
         print result
     #FNULL.close()
+
+#def ssh(host, command):
+#    commands.getstatusoutput("ssh {:s} {:s}".format(host, command))
     
 def main():
     nbeam = 9
-    length = 10
+    length = 240
     threads = []
     ddir = "/beegfs/DENG/JUNE"
     
-    #for beam in range(0,4):
-    #    numa = beam % 2
-    #    node = beam / 2
-    #    print numa, node
-    #
-    #    command = "python /home/pulsar/xinping/paf-baseband2power/run_outside.py -a {:s} -b {:f} -c {:d} -d {:d}".format(ddir, length, numa, nbeam)       
-    #    host = "pacifix{:d}".format(node)
-    #    print host, command
-    #    threads.append(threading.Thread(target = ssh, args = (host, command,)))
+    for beam in range(0,4):
+        numa = beam % 2
+        node = beam / 2
+        print numa, node
+    
+        command = "python /home/pulsar/xinping/paf-baseband2power/run_outside.py -a {:s} -b {:f} -c {:d} -d {:d}".format(ddir, length, numa, nbeam)
+        #print "python /home/pulsar/xinping/paf-baseband2power/run_outside.py -a {:s} -b {:f} -c {:d} -d {:d}".format(ddir, length, numa, nbeam)
+        #command = "uname -a"
+        host = "pacifix{:d}".format(node)
+        print host, command
+        threads.append(threading.Thread(target = ssh, args = (host, command,)))
     
     for beam in range(4, nbeam):
         numa = beam % 2
         node = beam / 2 + 1
         print numa, node
     
-        #command = "python /home/pulsar/xinping/paf-baseband2power/run_outside.py -a {:s} -b {:f} -c {:d} -d {:d}".format(ddir, length, numa, nbeam)
+        command = "python /home/pulsar/xinping/paf-baseband2power/run_outside.py -a {:s} -b {:f} -c {:d} -d {:d}".format(ddir, length, numa, nbeam)
+        print "python /home/pulsar/xinping/paf-baseband2power/run_outside.py -a {:s} -b {:f} -c {:d} -d {:d}".format(ddir, length, numa, nbeam)
         #command = "uname -a"
-        command = " "
         host = "pacifix{:d}".format(node)
         print host, command
         threads.append(threading.Thread(target = ssh, args = (host, command,)))
+        
+    #for beam in range(4, 6):
+    #    numa = beam % 2
+    #    node = beam / 2 + 2
+    #    print numa, node
+    #
+    #    command = "python /home/pulsar/xinping/paf-baseband2power/run_outside.py -a {:s} -b {:f} -c {:d} -d {:d}".format(ddir, length, numa, nbeam)
+    #    print "python /home/pulsar/xinping/paf-baseband2power/run_outside.py -a {:s} -b {:f} -c {:d} -d {:d}".format(ddir, length, numa, nbeam)
+    #    #command = "uname -a"
+    #    host = "pacifix{:d}".format(node)
+    #    print host, command
+    #    threads.append(threading.Thread(target = ssh, args = (host, command,)))
+    #
+    #for beam in range(6, nbeam):
+    #    numa = beam % 2
+    #    node = beam / 2 + 3
+    #    print numa, node
+    #
+    #    command = "python /home/pulsar/xinping/paf-baseband2power/run_outside.py -a {:s} -b {:f} -c {:d} -d {:d}".format(ddir, length, numa, nbeam)
+    #    #print "python /home/pulsar/xinping/paf-baseband2power/run_outside.py -a {:s} -b {:f} -c {:d} -d {:d}".format(ddir, length, numa, nbeam)
+    #    #command = "uname -a"
+    #    host = "pacifix{:d}".format(node)
+    #    print host, command
+    #    threads.append(threading.Thread(target = ssh, args = (host, command,)))
     
-    #for beam in range(nbeam):
-    for beam in range(nbeam - 4):
+    for beam in range(nbeam):
+    #for beam in range(nbeam - 4):
         threads[beam].start()
     
-    #for beam in range(nbeam):
-    for beam in range(nbeam - 4):
+    for beam in range(nbeam):
+    #for beam in range(nbeam - 4):
         threads[beam].join()
     
     #numa = 0
@@ -98,6 +127,4 @@ def main():
     #print command
     
 if __name__ == "__main__":
-    commands.getstatusoutput("ssh  pacifix0 '/home/pulsar/xinping/paf-baseband2power/run_outside.py -a /beegfs/DENG/JUNE -b 10 -c 0 -d 9'")
-    
-    #main()
+    main()
