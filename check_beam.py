@@ -57,7 +57,7 @@ def power(beam, time_stamp, ddir):
     power_sample = np.array(np.fromstring(power_file.read(nsamp * nchan * nbit / 8), dtype='float32'))
     power_sample = np.reshape(power_sample, (nsamp, nchan))
     #time_sample  = mjd_start + tsamp * np.arange(nsamp)/86400.0 + 2*tsamp/86400.0
-    time_sample  = mjd_start + tsamp * np.arange(nsamp)/86400.0 + 3.0 / 86400.0
+    time_sample  = mjd_start + tsamp * np.arange(nsamp)/86400.0 + 3.5 / 86400.0
     
     power_file.close()
     return time_sample, power_sample
@@ -114,17 +114,6 @@ def main(beam, time_stamp, ddir):
     return time_sample, direction_sample, direction_delta, power_sample
 
 if __name__ == "__main__":
-    beam       = 0
-    #time_stamp = "2018-06-09-07:37:10"
-    #time_stamp = "2018-06-25-20:12:41"
-    #time_stamp = "2018-06-26-17:52:22"
-    #time_stamp = "2018-06-26-17:59:52"
-    #time_stamp = "2018-06-26-18:31:15"
-    #time_stamp = "2018-06-26-18:44:48"
-    #time_stamp = "2018-06-26-19:08:34"
-    time_stamp = "2018-06-26-20:59:41"
-    #time_stamp = "2018-06-26-21:24:46"
-
     ### The first nine beams scan with small area, the focus is 430mm (SB00172_201806261745_FILT_1450_9beam.pk01.wt.hdf5)
     #beam       = 0
     #time_stamp = "2018-06-26-19:30:02"
@@ -225,7 +214,7 @@ if __name__ == "__main__":
     #beam       = 8
     #time_stamp = "2018-06-27-15:30:44"
     
-    ## The sixth nine beam scan with a good area, focus is 234mm, with the a new beamweights (SB00188_201806271618_FILT_1450_9beam.pk01.wt.hdf5)
+    # The sixth nine beam scan with a good area, focus is 234mm, with the a new beamweights (SB00188_201806271618_FILT_1450_9beam.pk01.wt.hdf5)
     #beam       = 0
     #time_stamp = "2018-06-27-16:21:04"
     #beam       = 1
@@ -245,7 +234,7 @@ if __name__ == "__main__":
     #beam       = 8
     #time_stamp = "2018-06-27-16:21:17"
 
-    ## The seventh nine beam scan with a good area, focus is 594mm, with the a new beamweights (SB00189_201806271729_FILT_1450_9beam.pk01.wt.hdf5)
+    ### The seventh nine beam scan with a good area, focus is 594mm, with the a new beamweights (SB00189_201806271729_FILT_1450_9beam.pk01.wt.hdf5)
     #beam       = 0
     #time_stamp = "2018-06-27-17:34:33"
     #beam       = 1
@@ -262,8 +251,8 @@ if __name__ == "__main__":
     #time_stamp = "2018-06-27-17:34:48"
     #beam       = 7
     #time_stamp = "2018-06-27-17:34:48"
-    beam       = 8
-    time_stamp = "2018-06-27-17:34:42"
+    #beam       = 8
+    #time_stamp = "2018-06-27-17:34:42"
     
     ## The eigth nine beam scan with a good area, focus is 430mm, but with a offset -66mm, the previous tests are with a offset -119mm, with the a new beamweights (SB00193_201806271920_FILT_1450_9beam)
     #beam       = 0
@@ -285,18 +274,117 @@ if __name__ == "__main__":
     #beam       = 8
     #time_stamp = "2018-06-27-19:23:08"
     
+    ## The ninth nine beam scan with a good area, focus is 430mm, but with a offset -167mm, with the a new beamweights (SB00194_201806272013_FILT_1450_9beam.pk01.wt.hdf5)
+    #beam       = 1
+    #time_stamp = "2018-06-27-20:23:04"
+    #beam       = 2
+    #time_stamp = "2018-06-27-20:23:05"
+    #beam       = 3
+    #time_stamp = "2018-06-27-20:23:02"
+    #beam       = 4
+    #time_stamp = "2018-06-27-20:23:10"
+    #beam       = 5
+    #time_stamp = "2018-06-27-20:23:07"
+    #beam       = 6
+    #time_stamp = "2018-06-27-20:23:15"
+    #beam       = 7
+    #time_stamp = "2018-06-27-20:23:18"
+    #beam       = 8
+    #time_stamp = "2018-06-27-20:23:13"
+    
+    ## The tenth nine beam scan with a good area, focus is 430mm, with the a new beamweights(SB00212_201806281948_FILT_1800_9beam)
+    #beam       = 0
+    #time_stamp = "2018-06-28-20:15:20"
+    #beam       = 1
+    #time_stamp = "2018-06-28-20:15:19"
+    #beam       = 2
+    #time_stamp = "2018-06-28-20:15:21"
+    #beam       = 3
+    #time_stamp = "2018-06-28-20:15:24"
+    #beam       = 4
+    #time_stamp = "2018-06-28-20:15:24"
+    #beam       = 5
+    #time_stamp = "2018-06-28-20:15:24"
+    #beam       = 6
+    #time_stamp = "2018-06-28-20:15:27"
+    #beam       = 7
+    #time_stamp = "2018-06-28-20:15:27"
+    #beam       = 8
+    #time_stamp = "2018-06-28-20:15:25"
+    
+    #beam       = 0
+    #time_stamp = "2018-06-09-07:37:10"
+    #time_stamp = "2018-06-25-20:12:41"
+    #time_stamp = "2018-06-26-17:52:22"
+    #time_stamp = "2018-06-26-17:59:52"
+    #time_stamp = "2018-06-26-18:31:15"
+    #time_stamp = "2018-06-26-18:44:48"
+    #time_stamp = "2018-06-26-19:08:34"
+    #time_stamp = "2018-06-26-20:59:41"
+    #time_stamp = "2018-06-26-21:24:46"
+    #time_stamp = "2018-06-27-22:00:58"
+    #time_stamp = "2018-06-27-22:11:21"
+    #time_stamp = "2018-06-27-22:45:40"
+    #time_stamp = "2018-06-27-23:03:3"
+    #time_stamp = "2018-06-28-00:22:10"
+    #time_stamp = "2018-06-28-13:37:12"
+    #time_stamp = "2018-06-28-14:00:22"
+    #time_stamp = "2018-06-28-14:09:58"
+    #time_stamp = "2018-06-28-14:16:53"
+    #time_stamp = "2018-06-28-14:42:12"
+    #time_stamp = "2018-06-28-15:22:46"
+    #time_stamp = "2018-06-28-16:02:36"
+    #time_stamp = "2018-06-28-16:31:30"
+    #time_stamp = "2018-06-28-16:54:09"
+    #time_stamp = "2018-06-28-20:06:46"
+    #time_stamp = "2018-06-28-20:15:20"
+    #time_stamp = "2018-06-28-22:30:25"
+    #time_stamp = "2018-06-29-10:56:51"
+    #time_stamp = "2018-06-29-10:56:51"
+    #time_stamp = "2018-06-29-12:05:23"
+    #time_stamp = "2018-06-29-12:20:17"
+    #time_stamp = "2018-06-29-12:52:20"
+    #time_stamp = "2018-06-29-13:07:10"
+    #time_stamp = "2018-06-29-13:12:45"
+    #time_stamp = "2018-06-29-13:35:38"
+    #time_stamp = "2018-06-29-14:07:23"
+    #time_stamp = "2018-06-29-14:26:37"
+    #time_stamp = "2018-06-29-14:32:59"
+    #time_stamp = "2018-06-29-14:48:04"
+    #time_stamp = "2018-06-29-14:55:29"
+    #time_stamp = "2018-06-29-15:04:38"
+    #time_stamp = "2018-06-29-15:17:57"
+    #time_stamp = "2018-06-29-15:49:37"
+    #time_stamp = "2018-06-29-16:26:14"
+    #time_stamp = "2018-06-29-17:44:40"
+    time_stamp = "2018-06-29-19:04:15"
+    time_stamp = "2018-06-29-19:11:05"
+    time_stamp = "2018-06-29-20:47:34"
+    time_stamp = "2018-06-29-21:17:36"
+    time_stamp = "2018-06-29-21:28:56"
+    time_stamp = "2018-06-30-12:58:45"
+    time_stamp = "2018-06-30-13:32:19"
+    time_stamp = "2018-06-30-13:57:18"
+    
+    beam = 0
     #ddir       = "/beegfs/DENG/JUNE/beam{:d}".format(beam)
     ddir       = "/beegfs/DENG/docker/beam{:d}".format(beam)
     
     time_sample, direction_sample, direction_delta, power_sample = main(beam, time_stamp, ddir)
 
-    #freq = 150
-    #plt.figure()
-    #plt.subplot(2,1,1)
-    #plt.plot(direction_sample[:,0] * 180/np.pi, power_sample[:,freq])
-    #plt.subplot(2,1,2)
-    #plt.plot(direction_sample[:,1] * 180/np.pi, power_sample[:,freq])
-    #plt.show()
+    #time_stamp = "2018-06-29-18:13:02"
+    time_sample1, direction_sample1, direction_delta1, power_sample1 = main(beam, time_stamp, ddir)
+    
+    freq = 200
+    #freq = 269
+    plt.figure()
+    plt.subplot(2,1,1)
+    plt.plot(direction_sample[:,0] * 180/np.pi, power_sample[:,freq])
+    #plt.plot(direction_sample1[:,0] * 180/np.pi, power_sample1[:,freq])
+    plt.subplot(2,1,2)
+    plt.plot(direction_sample[:,1] * 180/np.pi, power_sample[:,freq])
+    #plt.plot(direction_sample1[:,1] * 180/np.pi, power_sample1[:,freq])
+    plt.show()
 
     #freq = 200
     #plt.figure()
@@ -313,28 +401,28 @@ if __name__ == "__main__":
     #ymax = max(y)
     #z = power_sample[:,freq]
 
-    freq = 200
-    x = direction_sample[:,0] * 180/np.pi
-    xinterval = max(x)-min(x)
-    maxx = max(x) + xinterval * 0.1
-    minx = min(x) - xinterval * 0.1
-    y = direction_sample[:,1] * 180/np.pi
-    yinterval = max(y) - min(y)
-    maxy = max(y) + yinterval * 0.1
-    miny = min(y) - yinterval * 0.1    
-
-    z = power_sample[:, freq]
-
-    
-    xi = np.linspace(minx, maxx,100)
-    yi = np.linspace(miny, maxy,100)
-    X,Y= np.meshgrid(xi,yi)
-    
-    #zi = griddata((x, y), z, (xi[None,:], yi[:,None]), method='nearest')
-    zi = griddata((x, y), z, (X,Y), method='cubic')
-    
-    print zi
-    
-    plt.figure()
-    plt.imshow(zi)
-    plt.show()
+    #freq = 200
+    #x = direction_sample[:,0] * 180/np.pi
+    #xinterval = max(x)-min(x)
+    #maxx = max(x) + xinterval * 0.1
+    #minx = min(x) - xinterval * 0.1
+    #y = direction_sample[:,1] * 180/np.pi
+    #yinterval = max(y) - min(y)
+    #maxy = max(y) + yinterval * 0.1
+    #miny = min(y) - yinterval * 0.1    
+    #
+    #z = power_sample[:, freq]
+    #
+    #
+    #xi = np.linspace(minx, maxx,100)
+    #yi = np.linspace(miny, maxy,100)
+    #X,Y= np.meshgrid(xi,yi)
+    #
+    ##zi = griddata((x, y), z, (xi[None,:], yi[:,None]), method='nearest')
+    #zi = griddata((x, y), z, (X,Y), method='cubic')
+    #
+    #print zi
+    #
+    #plt.figure()
+    #plt.imshow(zi)
+    #plt.show()
