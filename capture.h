@@ -71,6 +71,9 @@ typedef struct conf_t
   double mjd_start;
   uint64_t picoseconds;
   double freq;
+  char source[MSTR_LEN];
+  char ra[MSTR_LEN], dec[MSTR_LEN];
+  
   char hfname[MSTR_LEN];
   char efname[MSTR_LEN];
 

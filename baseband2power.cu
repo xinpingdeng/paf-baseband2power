@@ -250,7 +250,6 @@ int register_header(conf_t *conf)
   size_t hdrsz;
   double scale;
   conf->tsamp_out = NSAMP_DF * conf->bufin_ndf * TSAMP;
-  //fprintf(stdout, "%f\n", conf->tsamp_out);
   
   conf->hdrbuf_in  = ipcbuf_get_next_read(conf->hdu_in->header_block, &hdrsz);
   if(hdrsz != DADA_HDR_SIZE)
@@ -283,9 +282,25 @@ int register_header(conf_t *conf)
       fprintf(stderr, "Error getting FILE_SIZE, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
-
+  if (ascii_header_get(conf->hdrbuf_in, "MJD_START", "%lf", &(conf->mjd_start)) < 0)  
+    {
+      multilog(runtime_log, LOG_ERR, "Error getting MJD_START, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      fprintf(stderr, "Error getting MJD_START, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      return EXIT_FAILURE;
+    }
+  if (ascii_header_get(conf->hdrbuf_in, "PICOSECONDS", "%ld", &(conf->picoseconds)) < 0)  
+    {
+      multilog(runtime_log, LOG_ERR, "Error getting PICOSECONDS, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      fprintf(stderr, "Error getting PICOSECONDS, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      return EXIT_FAILURE;
+    }
+  fprintf(stdout, "%f\t%E\t%E\t", conf->mjd_start, conf->picoseconds / 86400.0E12, 0.5 * conf->tsamp_out / 86400.0E6);
+  
+  conf->mjd_start = conf->mjd_start + conf->picoseconds / 86400.0E12 + 0.5 * conf->tsamp_out / 86400.0E6;  // to the middle of interval
+  fprintf(stdout, "%f\n\n\n\n\n", conf->mjd_start);
+  
   scale = conf->tsamp_in / conf->tsamp_out;
-  //fprintf(stdout, "%f\t%f\t%f\n", conf->tsamp_in, conf->tsamp_out, scale);
+
   conf->hdrbuf_out = ipcbuf_get_next_write(conf->hdu_out->header_block);
   if (!conf->hdrbuf_out)
     {
@@ -296,20 +311,38 @@ int register_header(conf_t *conf)
   memcpy(conf->hdrbuf_out, conf->hdrbuf_in, DADA_HDR_SIZE);  
   if (ascii_header_set(conf->hdrbuf_out, "TSAMP", "%lf", conf->tsamp_out) < 0)  
     {
-      multilog(runtime_log, LOG_ERR, "Error getting TSAMP, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
-      fprintf(stderr, "Error getting TSAMP, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      multilog(runtime_log, LOG_ERR, "Error setting TSAMP, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      fprintf(stderr, "Error setting TSAMP, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      return EXIT_FAILURE;
+    }  
+  if (ascii_header_set(conf->hdrbuf_out, "MJD_START", "%lf", conf->mjd_start) < 0)  
+    {
+      multilog(runtime_log, LOG_ERR, "Error setting MJD_START, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      fprintf(stderr, "Error setting MJD_START, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }    
-  if (ascii_header_set(conf->hdrbuf_out, "BYTES_PER_SECOND", "%lf", conf->bps_in *scale) < 0)  
+  //if (ascii_header_set(conf->hdrbuf_out, "PICOSECONDS", "unset") < 0)  
+  //  {
+  //    multilog(runtime_log, LOG_ERR, "Error setting PICOSECONDS, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+  //    fprintf(stderr, "Error setting PICOSECONDS, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+  //    return EXIT_FAILURE;
+  //  }
+  //if (ascii_header_set(conf->hdrbuf_out, "UTC_START", "unset") < 0)  
+  //  {
+  //    multilog(runtime_log, LOG_ERR, "Error setting UTC_START, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+  //    fprintf(stderr, "Error setting UTC_START, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+  //    return EXIT_FAILURE;
+  //  }    
+  if (ascii_header_set(conf->hdrbuf_out, "BYTES_PER_SECOND", "%lf", conf->bps_in * scale) < 0)  
     {
-      multilog(runtime_log, LOG_ERR, "Error getting BYTES_PER_SECOND, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
-      fprintf(stderr, "Error getting BYTES_PER_SECOND, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      multilog(runtime_log, LOG_ERR, "Error setting BYTES_PER_SECOND, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      fprintf(stderr, "Error setting BYTES_PER_SECOND, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }    
   if (ascii_header_set(conf->hdrbuf_out, "FILE_SIZE", "%lf", conf->fsz_in * scale) < 0)  
     {
-      multilog(runtime_log, LOG_ERR, "Error getting FILE_SIZE, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
-      fprintf(stderr, "Error getting FILE_SIZE, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      multilog(runtime_log, LOG_ERR, "Error setting FILE_SIZE, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      fprintf(stderr, "Error setting FILE_SIZE, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
 

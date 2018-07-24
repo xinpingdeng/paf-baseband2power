@@ -1,10 +1,24 @@
 #!/usr/bin/env python
 
-# ./paf-baseband2power.py -a paf-baseband2power.conf -b /beegfs/DENG/JUNE/ -c 0 -d 0 -e 0 -f 10 -g 9
+# ./paf-baseband2power-stream.py -a paf-baseband2power-stream.conf -b /beegfs/DENG/JULY/ -c 0 -d 0 -e 0 -f 10 -g 9
 
-import os, time, threading, ConfigParser, argparse, socket, json, struct, sys, datetime, pytz
+import os
+import time
+import threading
+import ConfigParser
+import argparse
+import socket
+import json
+import struct
+import sys
+import datetime
+import pytz
+import ephem
 
-def ConfigSectionMap(section):
+def ConfigSectionMap(cfname, section):
+    Config = ConfigParser.ConfigParser()
+    Config.read(cfname)
+    
     dict1 = {}
     options = Config.options(section)
     for option in options:
@@ -90,44 +104,13 @@ def utc_now():
     dt=datetime.datetime.utcnow().replace(tzinfo=pytz.utc)
     return dt
 
-# Read in command line arguments
-parser = argparse.ArgumentParser(description='Convert baseband data into power')
-parser.add_argument('-a', '--cfname', type=str, nargs='+',
-                    help='The name of configuration file')
-parser.add_argument('-b', '--directory', type=str, nargs='+',
-                    help='In which directory we record the data and read configuration files and parameter files')
-parser.add_argument('-c', '--numa', type=int, nargs='+',
-                    help='On which numa node we do the work, 0 or 1')
-parser.add_argument('-d', '--visiblegpu', type=str, nargs='+',
-                    help='Visible GPU, the parameter is for the usage inside docker container.')
-parser.add_argument('-e', '--memcheck', type=int, nargs='+',
-                    help='To run cuda-memcheck or not.')
-parser.add_argument('-f', '--length', type=float, nargs='+',
-                    help='Length of data capture.')
-parser.add_argument('-g', '--nbeam', type=int, nargs='+',
-                    help='Number of beams.')
-
-def receive_metadata(length, nbeam):
-    # Bind to multicast
-    multicast_group = '224.1.1.1'
-    server_address = ('', 5007)
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # Create the socket
-
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind(server_address) # Bind to the server address
-
-    group = socket.inet_aton(multicast_group)
-    mreq = struct.pack('4sL', group, socket.INADDR_ANY)
-    sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)  # Tell the operating system to add the socket to the multicast group on all interfaces.
-    
+def receive_metadata(length, nbeam, directory, sock):
     # Define file names and open files to write
     start_time = utc_now()
     time_str = "%Y-%m-%d-%H:%M:%S"
     metadata_fname = '{:s}/{:s}.metadata'.format(directory, start_time.strftime(time_str))
-    interval_fname = '{:s}/{:s}.interval'.format(directory, start_time.strftime(time_str))
     direction_fname = '{:s}/{:s}.direction'.format(directory, start_time.strftime(time_str))
     metadata_file = open(metadata_fname, "w")
-    interval_file = open(interval_fname, "w")
     direction_file = open(direction_fname, "w")
     on_source0 = 'false'  # assume to start with off-source
     
@@ -153,116 +136,17 @@ def receive_metadata(length, nbeam):
             direction_file.write('\t')
         direction_file.write('\n')
 
-        # Record on-source time interval and direction of nbeams at the beginning of on-source
-        on_source1 = data['pk01']['on_source']
-        print on_source1
-        if on_source1 != on_source0:
-            interval_file.write(str(bat2utc(str(data['timestamp']))))  # To record on-source time interval
-            interval_file.write("\t")
-            on_source0 = on_source1
-                            
-            if on_source1 == "false":  # To end current on-source interval
-                interval_file.write("\n")
-
-            if on_source1 == 'true':   # To record the direction of "nbeam" beams when the telescope is on source
-                #direction_file.write(str(bat2utc(str(data['timestamp']))))  
-                #direction_file.write("\t")
-                for item in range(nbeam):
-                    #direction_file.write(str(data['beams_direction']['beam{:02d}'.format(item+1)][0]))
-                    #direction_file.write('\t')
-                    #direction_file.write(str(data['beams_direction']['beam{:02d}'.format(item+1)][1]))
-                    #direction_file.write('\t')
-                    
-                    interval_file.write(str(data['beams_direction']['beam{:02d}'.format(item+1)][0]))
-                    interval_file.write('\t')
-                    interval_file.write(str(data['beams_direction']['beam{:02d}'.format(item+1)][1]))
-                    interval_file.write('\t')
-                #direction_file.write('\n')
-        
-
     sock.close()
     metadata_file.close()
-    interval_file.close()
     direction_file.close()
 
-#length = 10
-#nbeam  = 9
-#receive_metadata(length, nbeam)
-#exit()
-
-args         = parser.parse_args()
-cfname       = args.cfname[0]
-numa         = args.numa[0]
-nic          = numa + 1
-visiblegpu   = args.visiblegpu[0]
-directory    = args.directory[0]
-memcheck     = args.memcheck[0]
-length       = args.length[0]
-nbeam        = args.nbeam[0]
-
-hdr  = 0
-freq = 1340.5
-
-if(args.visiblegpu[0]==''):
-    multi_gpu = 1;
-if(args.visiblegpu[0]=='all'):
-    multi_gpu = 1;
-else:
-    multi_gpu = 0;
+def metadata(length, nbeam, directory, sock):
+    receive_metadata(length, nbeam, directory, sock)
     
-# Play with configuration file
-Config = ConfigParser.ConfigParser()
-Config.read(cfname)
+def capture(capture_key, capture_sod, capture_ndf, hdr, nic, capture_hfname, capture_efname, freq, length, directory, source_name, ra, dec):
+    os.system("./paf_capture -a {:s} -b {:s} -c {:d} -d {:d} -e {:d} -f {:s} -g {:s} -i {:f} -j {:f} -k {:s} -l {:s} -m {:s} -n {:s}".format(capture_key, capture_sod, capture_ndf, hdr, nic, capture_hfname, capture_efname, freq, length, directory, source_name, ra, dec))
 
-# Basic configuration
-nsamp_df     = int(ConfigSectionMap("BasicConf")['nsamp_df'])
-npol_samp    = int(ConfigSectionMap("BasicConf")['npol_samp'])
-ndim_pol     = int(ConfigSectionMap("BasicConf")['ndim_pol'])
-nchk_nic     = int(ConfigSectionMap("BasicConf")['nchk_nic'])
-ncpu_numa    = int(ConfigSectionMap("BasicConf")['ncpu_numa'])
-
-# Capture configuration
-capture_ncpu    = int(ConfigSectionMap("CaptureConf")['ncpu'])
-capture_ndf 	= int(ConfigSectionMap("CaptureConf")['ndf'])
-capture_nbuf    = ConfigSectionMap("CaptureConf")['nblk']
-capture_key     = ConfigSectionMap("CaptureConf")['key']
-capture_key     = format(int("0x{:s}".format(capture_key), 0) + 2 * nic, 'x')
-capture_kfname  = "{:s}_nic{:d}.key".format(ConfigSectionMap("CaptureConf")['kfname_prefix'], nic)
-capture_efname  = ConfigSectionMap("CaptureConf")['efname']
-capture_hfname  = ConfigSectionMap("CaptureConf")['hfname']
-capture_nreader = ConfigSectionMap("CaptureConf")['nreader']
-capture_sod     = ConfigSectionMap("CaptureConf")['sod']
-capture_rbufsz  = capture_ndf *  nchk_nic * 7168
-
-# baseband2power configuration
-baseband2power_key        = ConfigSectionMap("Baseband2powerConf")['key']
-baseband2power_kfname     = "{:s}.key".format(ConfigSectionMap("Baseband2powerConf")['kfname_prefix'])
-baseband2power_key        = format(int("0x{:s}".format(baseband2power_key), 0), 'x')
-baseband2power_sod        = int(ConfigSectionMap("Baseband2powerConf")['sod'])
-baseband2power_nreader    = ConfigSectionMap("Baseband2powerConf")['nreader']
-baseband2power_nbuf       = ConfigSectionMap("Baseband2powerConf")['nblk']
-baseband2power_nchan      = int(ConfigSectionMap("Baseband2powerConf")['nchan'])
-baseband2power_nbyte      = int(ConfigSectionMap("Baseband2powerConf")['nbyte'])
-baseband2power_rbufsz     = baseband2power_nchan * baseband2power_nbyte
-baseband2power_cpu        = ncpu_numa * numa + capture_ncpu
-
-# Dbdisk configuration
-dbdisk_cpu = ncpu_numa * numa + capture_ncpu + 1
-
-def metadata(length, nbeam):
-    receive_metadata(length, nbeam)
-    
-def capture():
-#    time.sleep(sleep_time)
-    os.system("./paf_capture -a {:s} -b {:s} -c {:d} -d {:d} -e {:d} -f {:s} -g {:s} -i {:f} -j {:f} -k {:s}".format(capture_key, capture_sod, capture_ndf, hdr, nic, capture_hfname, capture_efname, freq, length, directory))
-
-def baseband2power():
-    #if memcheck:
-    #    print ('taskset -c {:d} cuda-memcheck ./paf_baseband2power -a {:s} -b {:s} -c {:s} -d {:d} -e {:d} -f {:d} -g {:d}'.format(baseband2power_cpu, capture_key, baseband2power_key, directory, gpu, capture_ndf, baseband2power_nchan, baseband2power_sod))
-    #    os.system('taskset -c {:d} cuda-memcheck ./paf_baseband2power -a {:s} -b {:s} -c {:s} -d {:d} -e {:d} -f {:d} -g {:d}'.format(baseband2power_cpu, capture_key, baseband2power_key, directory, gpu, capture_ndf, baseband2power_nchan, baseband2power_sod))
-    #else:
-    #    print ('taskset -c {:d} ./paf_baseband2power -a {:s} -b {:s} -c {:s} -d {:d} -e {:d} -f {:d} -g {:d}'.format(baseband2power_cpu, capture_key, baseband2power_key, directory, gpu, capture_ndf, baseband2power_nchan, baseband2power_sod))
-    #    os.system('taskset -c {:d} ./paf_baseband2power -a {:s} -b {:s} -c {:s} -d {:d} -e {:d} -f {:d} -g {:d}'.format(baseband2power_cpu, capture_key, baseband2power_key, directory, gpu, capture_ndf, baseband2power_nchan, baseband2power_sod))
+def baseband2power(baseband2power_cpu, capture_key, baseband2power_key, directory, numa, capture_ndf, baseband2power_nchan, baseband2power_sod, multi_gpu):
     if multi_gpu:
         print ('taskset -c {:d} ./paf_baseband2power -a {:s} -b {:s} -c {:s} -d {:d} -e {:d} -f {:d} -g {:d}'.format(baseband2power_cpu, capture_key, baseband2power_key, directory, numa, capture_ndf, baseband2power_nchan, baseband2power_sod))
         os.system('taskset -c {:d} ./paf_baseband2power -a {:s} -b {:s} -c {:s} -d {:d} -e {:d} -f {:d} -g {:d}'.format(baseband2power_cpu, capture_key, baseband2power_key, directory, numa, capture_ndf, baseband2power_nchan, baseband2power_sod))
@@ -270,11 +154,82 @@ def baseband2power():
         print ('taskset -c {:d} ./paf_baseband2power -a {:s} -b {:s} -c {:s} -d {:d} -e {:d} -f {:d} -g {:d}'.format(baseband2power_cpu, capture_key, baseband2power_key, directory, 0, capture_ndf, baseband2power_nchan, baseband2power_sod))
         os.system('taskset -c {:d} ./paf_baseband2power -a {:s} -b {:s} -c {:s} -d {:d} -e {:d} -f {:d} -g {:d}'.format(baseband2power_cpu, capture_key, baseband2power_key, directory, 0, capture_ndf, baseband2power_nchan, baseband2power_sod))
             
-def dbdisk():
+def dbdisk(dbdisk_cpu, baseband2power_key, directory):
     print ('dada_dbdisk -b {:d} -k {:s} -D {:s} -W -s -d'.format(dbdisk_cpu, baseband2power_key, directory))
     os.system('dada_dbdisk -b {:d} -k {:s} -D {:s} -W -s -d'.format(dbdisk_cpu, baseband2power_key, directory))
 
-def main():
+def main(args):
+    cfname       = args.cfname[0]
+    numa         = args.numa[0]
+    nic          = numa + 1
+    visiblegpu   = args.visiblegpu[0]
+    directory    = args.directory[0]
+    memcheck     = args.memcheck[0]
+    length       = args.length[0]
+    nbeam        = args.nbeam[0]
+    
+    # Bind to multicast
+    multicast_group = '224.1.1.1'
+    server_address = ('', 5007)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # Create the socket
+
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind(server_address) # Bind to the server address
+
+    group = socket.inet_aton(multicast_group)
+    mreq = struct.pack('4sL', group, socket.INADDR_ANY)
+    sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)  # Tell the operating system to add the socket to the multicast group on all interfaces.
+    pkt, address = sock.recvfrom(1<<16)
+    data = json.loads(pkt)
+
+    hdr         = 0
+    freq        = float(data['sky_frequency'])
+    source_name = str(data['target_name'])
+    ra          = str(ephem.hours(float(data['pk01']['actual_radec'][0])))
+    dec         = str(ephem.degrees(float(data['pk01']['actual_radec'][1])))
+        
+    if(visiblegpu==''):
+        multi_gpu = 1;
+    elif(visiblegpu=='all'):
+        multi_gpu = 1;
+    else:
+        multi_gpu = 0;
+    
+    # Basic configuration
+    nsamp_df     = int(ConfigSectionMap(cfname, "BasicConf")['nsamp_df'])
+    npol_samp    = int(ConfigSectionMap(cfname, "BasicConf")['npol_samp'])
+    ndim_pol     = int(ConfigSectionMap(cfname, "BasicConf")['ndim_pol'])
+    nchk_nic     = int(ConfigSectionMap(cfname, "BasicConf")['nchk_nic'])
+    ncpu_numa    = int(ConfigSectionMap(cfname, "BasicConf")['ncpu_numa'])
+    
+    # Capture configuration
+    capture_ncpu    = int(ConfigSectionMap(cfname, "CaptureConf")['ncpu'])
+    capture_ndf    = int(ConfigSectionMap(cfname, "CaptureConf")['ndf'])
+    capture_nbuf    = ConfigSectionMap(cfname, "CaptureConf")['nblk']
+    capture_key     = ConfigSectionMap(cfname, "CaptureConf")['key']
+    capture_key     = format(int("0x{:s}".format(capture_key), 0) + 2 * nic, 'x')
+    capture_kfname  = "{:s}_nic{:d}.key".format(ConfigSectionMap(cfname, "CaptureConf")['kfname_prefix'], nic)
+    capture_efname  = ConfigSectionMap(cfname, "CaptureConf")['efname']
+    capture_hfname  = ConfigSectionMap(cfname, "CaptureConf")['hfname']
+    capture_nreader = ConfigSectionMap(cfname, "CaptureConf")['nreader']
+    capture_sod     = ConfigSectionMap(cfname, "CaptureConf")['sod']
+    capture_rbufsz  = capture_ndf *  nchk_nic * 7168
+    
+    # baseband2power configuration
+    baseband2power_key        = ConfigSectionMap(cfname, "Baseband2powerConf")['key']
+    baseband2power_kfname     = "{:s}.key".format(ConfigSectionMap(cfname, "Baseband2powerConf")['kfname_prefix'])
+    baseband2power_key        = format(int("0x{:s}".format(baseband2power_key), 0), 'x')
+    baseband2power_sod        = int(ConfigSectionMap(cfname, "Baseband2powerConf")['sod'])
+    baseband2power_nreader    = ConfigSectionMap(cfname, "Baseband2powerConf")['nreader']
+    baseband2power_nbuf       = ConfigSectionMap(cfname, "Baseband2powerConf")['nblk']
+    baseband2power_nchan      = int(ConfigSectionMap(cfname, "Baseband2powerConf")['nchan'])
+    baseband2power_nbyte      = int(ConfigSectionMap(cfname, "Baseband2powerConf")['nbyte'])
+    baseband2power_rbufsz     = baseband2power_nchan * baseband2power_nbyte
+    baseband2power_cpu        = ncpu_numa * numa + capture_ncpu
+    
+    # Dbdisk configuration
+    dbdisk_cpu = ncpu_numa * numa + capture_ncpu + 1
+    
     # Create key files
     # and destroy share memory at the last time
     # this will save prepare time for the pipeline as well
@@ -291,15 +246,13 @@ def main():
     baseband2power_key_file.writelines("key {:s}\n".format(baseband2power_key))
     baseband2power_key_file.close()
 
-    print "HERE"
-
     os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(capture_key, capture_rbufsz, capture_nbuf, capture_nreader))
     os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(baseband2power_key, baseband2power_rbufsz, baseband2power_nbuf, baseband2power_nreader))
 
-    t_metadata       = threading.Thread(target = receive_metadata, args=(length, nbeam,))
-    t_capture        = threading.Thread(target = capture)
-    t_baseband2power = threading.Thread(target = baseband2power)
-    t_dbdisk         = threading.Thread(target = dbdisk)
+    t_metadata       = threading.Thread(target = receive_metadata, args = (length, nbeam, directory, sock,))
+    t_capture        = threading.Thread(target = capture, args = (capture_key, capture_sod, capture_ndf, hdr, nic, capture_hfname, capture_efname, freq, length, directory, source_name, ra, dec,))
+    t_baseband2power = threading.Thread(target = baseband2power, args = (baseband2power_cpu, capture_key, baseband2power_key, directory, numa, capture_ndf, baseband2power_nchan, baseband2power_sod, multi_gpu,))
+    t_dbdisk         = threading.Thread(target = dbdisk, args = (dbdisk_cpu, baseband2power_key, directory,))
 
     t_metadata.start()
     t_capture.start()
@@ -315,4 +268,22 @@ def main():
     os.system("dada_db -d -k {:s}".format(baseband2power_key))
     
 if __name__ == "__main__":
-    main()
+    # Read in command line arguments
+    parser = argparse.ArgumentParser(description='Convert baseband data into power')
+    parser.add_argument('-a', '--cfname', type=str, nargs='+',
+                        help='The name of configuration file')
+    parser.add_argument('-b', '--directory', type=str, nargs='+',
+                        help='In which directory we record the data and read configuration files and parameter files')
+    parser.add_argument('-c', '--numa', type=int, nargs='+',
+                        help='On which numa node we do the work, 0 or 1')
+    parser.add_argument('-d', '--visiblegpu', type=str, nargs='+',
+                        help='Visible GPU, the parameter is for the usage inside docker container.')
+    parser.add_argument('-e', '--memcheck', type=int, nargs='+',
+                    help='To run cuda-memcheck or not.')
+    parser.add_argument('-f', '--length', type=float, nargs='+',
+                        help='Length of data capture.')
+    parser.add_argument('-g', '--nbeam', type=int, nargs='+',
+                        help='Number of beams.')
+    
+    args = parser.parse_args()
+    main(args)

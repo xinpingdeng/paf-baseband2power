@@ -41,6 +41,8 @@ typedef struct conf_t
   size_t bufin_size, bufrt_size, bufout_size;
   size_t nsamp_in, nsamp_rt, nsamp_out;
   size_t hdrsz;
+  size_t picoseconds;
+  double mjd_start;
   
   double bufin_ndf;
   int nchan_out;

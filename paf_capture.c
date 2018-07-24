@@ -40,7 +40,10 @@ void usage()
 	   " -h Show help    \n"
 	   " -i The center frequency of captured data    \n"
 	   " -j The length of data capture    \n"
-	   " -k Which directory will be used to record data    \n");
+	   " -k Which directory will be used to record data    \n"
+	   " -l The name of source    \n"
+	   " -m RA of source    \n"
+	   " -n DEC of source \n ");
 }
 
 int main(int argc, char **argv)
@@ -56,7 +59,7 @@ int main(int argc, char **argv)
   FILE *fp_log = NULL;
   char log_fname[MSTR_LEN], hfname[MSTR_LEN], efname[MSTR_LEN];
   
-  while((arg=getopt(argc,argv,"a:b:c:d:e:f:g:hi:j:k:")) != -1)
+  while((arg=getopt(argc,argv,"a:b:c:d:e:f:g:hi:j:k:l:m:n:")) != -1)
     {
       switch(arg)
 	{
@@ -107,6 +110,18 @@ int main(int argc, char **argv)
 	  	    
 	case 'k':
 	  sscanf(optarg, "%s", conf.dir);
+	  break;
+	  
+	case 'l':	  	  
+	  sscanf(optarg, "%s", conf.source);
+	  break;
+	  
+	case 'm':	  	  
+	  sscanf(optarg, "%s", conf.ra);
+	  break;
+	  
+	case 'n':	  	  
+	  sscanf(optarg, "%s", conf.dec);
 	  break;
 	}
     }
