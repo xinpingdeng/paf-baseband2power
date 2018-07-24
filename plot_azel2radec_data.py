@@ -1,12 +1,8 @@
 #!/usr/bin/env python
 
-import socket 
-import json
-import datetime 
-import pytz
-import struct
-import time
-import argparse
+import matplotlib.pyplot as plt
+import datetime, pytz, ephem
+import numpy as np
 
 def utc_now():
     """
@@ -81,53 +77,72 @@ def bat2utc(bat, dutc=None):
     utcDJD = utcDJDs/86400.0
     return utcDJD + 2415020 - 2400000.5
 
-if __name__ == "__main__":    
-    parser = argparse.ArgumentParser(description='Record metadata from multicast')
-    parser.add_argument('-a', '--length', type=float, nargs='+',
-    help='The length for metadata recording')
-    parser.add_argument('-b', '--nbeam', type=int, nargs='+',
-                        help='To record the direction of this number of beams')
+beam       = 0
+time_stamp = "2018-06-28-00:22:10"   
+ddir       = "/beegfs/DENG/docker/beam{:d}".format(beam)
+freq       = 210
 
-    args   = parser.parse_args()
-    nbeam  = args.nbeam[0]
-    length = args.length[0]
+eff        = ephem.Observer()
+eff.long, eff.lat = '6.883611111', '50.52483333'
+
+metadata = open("{:s}/{:s}.metadata".format(ddir, time_stamp)).readlines()
+
+time   = []
+time_c = []
+ra_r     = []
+dk_r     = []
+ra_cr   = []
+dk_cr   = []
+shift  = 0.0 / 86400.0
+for metadata_line in metadata:
+    bat_stamp = metadata_line.split('}')[0].split(',')[2].split('\'')[3]
+
+    ra, dk = float(metadata_line.split('}')[0].split('[u\'')[2].split('\'')[0]), float(metadata_line.split('}')[0].split('[u\'')[2].split('\'')[2])  
+    az, el = float(metadata_line.split('{')[3].split(':')[3].split('\'')[1]), float(metadata_line.split('{')[3].split(':')[3].split('\'')[3])
+    print "{:s}\t{:f}\t{:f}".format(bat_stamp, ra, dk)
+
+    mjd = bat2utc(bat_stamp)
+    djd = mjd - 2415020 + 2400000.5 + shift
+    eff.date = djd 
     
-    # Bind to multicast
-    multicast_group = '224.1.1.1'
-    server_address = ('', 5007)
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)  # Create the socket
+    ra_c, dk_c = eff.radec_of(az, el)
+    print "{:s}\t{:f}\t{:f}".format(bat_stamp, ra_c, dk_c)
 
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind(server_address) # Bind to the server address
+    time.append(mjd)
+    time_c.append(djd + 2415020 - 2400000.5)
+    
+    #ra_r.append(ra * 180.0 / np.pi * 60.0)
+    #dk_r.append(dk * 180.0 / np.pi * 60.0)
+    #
+    #ra_cr.append(ra_c * 180.0 / np.pi * 60.0)
+    #dk_cr.append(dk_c * 180.0 / np.pi * 60.0)
 
-    group = socket.inet_aton(multicast_group)
-    mreq = struct.pack('4sL', group, socket.INADDR_ANY)
-    sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)  # Tell the operating system to add the socket to the multicast group on all interfaces.
+    ra_r.append(ra)
+    dk_r.append(dk)
+    
+    ra_cr.append(ra_c)
+    dk_cr.append(dk_c)
 
-    direction_fp = open('{:s}.direction'.format(utc_now().strftime("%Y-%m-%d-%H:%M:%S")), 'w')
-    metadata_fp = open('{:s}.metadata'.format(utc_now().strftime("%Y-%m-%d-%H:%M:%S")), 'w')
+time   = np.array(time)
+time_c = np.array(time_c)
+ra_r = np.array(ra_r)
+dk_r = np.array(dk_r)
+ra_cr = np.array(ra_cr)
+dk_cr = np.array(dk_cr)
 
-    start_time = time.time()
-    while ((time.time() - start_time) < length):
-        pkt, addr = sock.recvfrom(1<<16) 
-        data = json.loads(pkt)#['beams_direction']#['beam01']
-        #print "Record metadata, current BMF BAT timestamp is {:s} ...".format(str(data['timestamp']))
-        print "Metadata capture, {:f} seconds of {:f} seconds ...".format(time.time() - start_time, length)
-        
-        # Record metadata
-        metadata_fp.write(str(data))  # To record metadata with original format
-        metadata_fp.write("\n")
+result = np.concatenate(([time], [ra_cr], [dk_cr]), axis = 0).T
 
-        # Record beam direction for all beams, it is in decimal RA and DEC 
-        direction_fp.write(str(bat2utc(str(data['timestamp']))))  
-        direction_fp.write("\t")
-        direction_fp.write(data['target_name'])
-        for item in range(nbeam):
-            direction_fp.write(str(data['beams_direction']['beam{:02d}'.format(item+1)][0]))
-            direction_fp.write("\t")
-            direction_fp.write(str(data['beams_direction']['beam{:02d}'.format(item+1)][1]))
-            direction_fp.write("\t")
-        direction_fp.write("\n")
-    direction_fp.close()
-    metadata_fp.close()
-    sock.close()
+np.savetxt('{:s}.radec_new'.format(time_stamp), result)
+
+print result
+
+#print ra_cr
+
+plt.figure()
+plt.subplot(2,1,1)
+plt.plot(time, ra_r)
+plt.plot(time_c, ra_cr)
+plt.subplot(2,1,2)
+plt.plot(time, dk_r)
+plt.plot(time_c, dk_cr)
+plt.show()

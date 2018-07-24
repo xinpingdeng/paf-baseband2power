@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import re 
 import numpy as np
 import matplotlib.pyplot as plt
 import ephem
@@ -9,6 +10,9 @@ from mpl_toolkits.mplot3d import axes3d
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.interpolate import interp2d
 from scipy.interpolate import BivariateSpline
+import json
+import codecs
+
 #RectBivariateSpline
 
 def keyword_value(data_file, nline_header, key_word):
@@ -47,15 +51,26 @@ def power(beam, time_stamp, ddir):
     power_file.seek(hdr_size)
     power_sample = np.array(np.fromstring(power_file.read(nsamp * nchan * nbit / 8), dtype='float32'))
     power_sample = np.reshape(power_sample, (nsamp, nchan))
-    #time_sample  = mjd_start + tsamp * np.arange(nsamp)/86400.0 + 2*tsamp/86400.0
-    time_sample  = mjd_start + tsamp * np.arange(nsamp)/86400.0 + 3.5 / 86400.0
+
+    #time_sample  = mjd_start + tsamp * np.arange(nsamp)/86400.0 + 0.5 * tsamp / 86400.0 + 2.65 / 86400.0;
+    
+    #time_sample  = mjd_start + tsamp * np.arange(nsamp)/86400.0 + 4.5*tsamp/86400.0
+    #time_sample  = mjd_start + tsamp * np.arange(nsamp)/86400.0 + 3.5 / 86400.0
+    #time_sample  = mjd_start + tsamp * np.arange(nsamp)/86400.0 + 2.0 / 86400.0 + 0.5 * tsamp / 86400.0
+    time_sample  = mjd_start + tsamp * np.arange(nsamp)/86400.0 #+ 2.0 / 86400.0 + 0.5 * tsamp / 86400.0
+    print 0.5 * tsamp
     
     power_file.close()
     return time_sample, power_sample
 
 def direction(beam, time_stamp, ddir, time_sample):
     direction_fname = "{:s}/{:s}.direction".format(ddir, time_stamp)
+    #direction_fname = "2018-06-28-00:22:10.azel"
+    #direction_fname = "2018-06-28-00:22:10.radec"
+    #direction_fname = "2018-06-28-00:22:10.radec_new"
+    
     direction_data = np.loadtxt(direction_fname)
+    #print direction_data
     direction_interp = []
     direction_interp.append(np.interp(time_sample, direction_data[:,0], direction_data[:, 2 * beam + 1]))
     direction_interp.append(np.interp(time_sample, direction_data[:,0], direction_data[:, 2 * beam + 2]))
@@ -63,6 +78,44 @@ def direction(beam, time_stamp, ddir, time_sample):
 
     return direction_interp
 
+def metadata_azel(beam, time_stamp, ddir):
+    metadata_fname = "{:s}/{:s}.metadata".format(ddir, time_stamp)
+    
+    lines = codecs.open(metadata_fname, encoding='utf-8').readlines()
+    for line in lines:
+        #print (line.split(":")[49].split(']')[0].split('[')[1].split(',')[0].encode("ascii","ignore")), (line.split(":")[49].split(']')[0].split('[')[1].split(',')[1].split(' ')[1].encode("ascii","ignore"))
+        print (line.split(":")[50].split(']')[0].split('[')[1].split(',')[0].encode("ascii","ignore")), (line.split(":")[50].split(']')[0].split('[')[1].split(',')[1].split(' ')[1].encode("ascii","ignore"))        
+        
+    ##print line
+    ###print line['target_name']
+    ##
+    ##exit()
+    #
+    ##lines = open(metadata_fname).readlines()
+    ##for line in lines:
+    ##    #print line.split(':')#.index('target_name')
+    ##    print dict(lines)
+    ##    exit()
+    ##    
+    ##data = json.loads(dict(json_data[0]))
+    #
+    ##print json_data
+    ##exit()
+    #
+    ###json.load()
+    ##with open(metadata_fname) as json_data:
+    #with codecs.open(metadata_fname, encoding='utf-8') as json_data:
+    #    commands = dict(re.findall(r'(\S+)\s+(.+)', json_data.read()))
+    #    print commands['target_name']
+    #    #print json.loads(json.dumps(commands))['target_name']
+    #    
+    ##    
+    ##    #data = 
+    ##    #print json.dumps(commands, indent=2, sort_keys=True)
+    ##    #print commands.keys()#['target_name']
+    ##    
+    ##    #print commands['target_name']
+        
 def main(beam, time_stamp, ddir):
     time_sample, power_sample = power(beam, time_stamp, ddir)
     direction_sample = direction(beam, time_stamp, ddir, time_sample)
@@ -110,155 +163,42 @@ if __name__ == "__main__":
     #time_stamp = "2018-06-25-20:12:41"
     #time_stamp = "2018-06-26-17:52:22"
     #time_stamp = "2018-06-26-17:59:52"
-    #time_stamp = "2018-06-26-18:31:15"
+    
+    ##time_stamp = "2018-06-26-18:31:15"
     #time_stamp = "2018-06-26-18:44:48"
     #time_stamp = "2018-06-26-19:08:34"
-    #time_stamp = "2018-06-26-20:59:41"
+    ##time_stamp = "2018-06-26-20:59:41"
     #time_stamp = "2018-06-26-21:24:46"
-    
-    #beam       = 0
-    #time_stamp = "2018-06-26-19:30:02"
-    #beam       = 1
-    #time_stamp = "2018-06-26-19:30:02"
-    #beam       = 2
-    #time_stamp = "2018-06-26-19:29:59"
-    #beam       = 3
-    #time_stamp = "2018-06-26-19:29:58"
-    #beam       = 4
-    #time_stamp = "2018-06-26-19:29:53"
-    #beam       = 5
-    #time_stamp = "2018-06-26-19:29:53"
-    #beam       = 6
-    #time_stamp = "2018-06-26-19:29:35"
-    #beam       = 7
-    #time_stamp = "2018-06-26-19:29:35"
-    beam       = 8
-    time_stamp = "2018-06-26-19:29:29"
 
-    #beam       = 0
-    #time_stamp = "2018-06-26-20:01:17"
-    #beam       = 1
-    #time_stamp = "2018-06-26-20:01:12"
-    #beam       = 2
-    #time_stamp = "2018-06-26-20:01:03"
-    #beam       = 3
-    #time_stamp = "2018-06-26-20:01:05"
-    #beam       = 4
-    #time_stamp = "2018-06-26-20:01:06"
-    #beam       = 5
-    #time_stamp = "2018-06-26-20:01:06"
-    #beam       = 6
-    #time_stamp = "2018-06-26-20:01:02"
-    #beam       = 7
-    #time_stamp = "2018-06-26-20:00:59"
-    #beam       = 8
-    #time_stamp = "2018-06-26-20:00:57"
+    time_stamp = "2018-06-28-00:22:10"    # 3C345
+    #time_stamp = "2018-06-28-13:37:12"    # 3C147
+    #time_stamp = "2018-06-28-14:42:12"    # 3C147
     
     #ddir       = "/beegfs/DENG/JUNE/beam{:d}".format(beam)
     ddir       = "/beegfs/DENG/docker/beam{:d}".format(beam)
-    freq       = 100
+    freq       = 210
     
     time_sample, direction_sample, direction_delta, power_sample = main(beam, time_stamp, ddir)
     
-    #freq = 260
-    #plt.figure()
-    #plt.subplot(2,1,1)
-    #plt.plot(direction_sample[:,0] * 180.0/np.pi, power_sample[:,freq])
-    ##plt.plot(time_sample, power_sample[:,freq])
-    ##plt.xlim([202, 203.5])
-    #plt.subplot(2,1,2)
-    #plt.plot(direction_sample[:,1] * 180.0/np.pi, power_sample[:,freq])
-    #plt.xlim([29, 31])
-    #plt.show()
+    freq = 260
+    plt.figure()
+    plt.subplot(2,1,1)
+    plt.plot(direction_sample[:,0] * 180.0/np.pi * 60.0, power_sample[:,freq])
+    #plt.plot(direction_delta[:,0] * 180.0/np.pi * 60.0, power_sample[:,freq])
+    plt.subplot(2,1,2)
+    plt.plot(direction_sample[:,1] * 180.0/np.pi * 60.0, power_sample[:,freq])
+    #plt.plot(direction_delta[:,1] * 180.0/np.pi * 60.0, power_sample[:,freq])
+    plt.show()
 
-    #freq = 200    
-    #f        = interp2d(direction_sample[:,0], direction_sample[:,1], power_sample[:, freq], kind="cubic")
-    #x_coords = np.arange(min(direction_sample[:,0]),max(direction_sample[:,0]), (max(direction_sample[:,0]) - min(direction_sample[:,0]))/len(direction_sample[:,0]))
-    #y_coords = np.arange(min(direction_sample[:,1]),max(direction_sample[:,1]), (max(direction_sample[:,1]) - min(direction_sample[:,1]))/len(direction_sample[:,1]))
-    #z        = f(x_coords,y_coords)
-    #
-    #fig = plt.imshow(z,
-    #                 extent=[min(direction_sample[:,0]),max(direction_sample[:,0]),min(direction_sample[:,1]),max(direction_sample[:,1])],
-    #                 origin="lower")
-    #plt.show()
-    #
-    #plt.figure()
-    #plt.plot(x_coords, z)
-    #plt.show()
-
-    #freq = 200
-    #fig = plt.figure()
-    #ax = plt.axes(projection='3d')
-    #surf = ax.plot_surface(direction_sample[:,0] * 180/np.pi, direction_sample[:,1] * 180/np.pi, power_sample[:,freq], cmap=plt.cm.jet, rstride=1, cstride=1, linewidth=0)
-    ## Add a color bar which maps values to colors.
-    #fig.colorbar(surf, shrink=0.5, aspect=5)
-    #plt.show()
-
-    #data = np.reshape(power_sample[:,freq][5:256+5], (16,16))
-    #
-    #plt.figure()
-    #plt.imshow(data)
-    #plt.show()
-
-    #freq = 200
-    #f = BivariateSpline(direction_sample[:,0], direction_sample[:,1], power_sample[:, freq], kind='cubic')
-    #data = f(direction_sample[:,0], direction_sample[:,1])
-    #
-    #plt.figure()
-    #plt.plot(direction_sample[:,1], data)
-    #plt.show()
-
-    #plt.figure()
-    #plt.subplot(2,1,1)
-    #plt.plot(time_sample, direction_sample[:,0])
-    #plt.subplot(2,1,2)
-    #plt.plot(time_sample, direction_sample[:,1])
-    #plt.show()
+    plt.figure()
+    plt.plot(direction_sample[:,0], direction_sample[:,1])
+    plt.show()
     
-    #freq = 200
-    #x = direction_sample[:,0] * 180/np.pi
-    #y = direction_sample[:,1] * 180/np.pi
-    #z = power_sample[:,freq]
-    #
-    ##plt.figure()
-    ##plt.plot((time_sample - time_sample[0]) * 86400.0, x)
-    ##plt.show()
-    #
-    ##plt.figure()
-    ##plt.subplot(2,1,1)
-    ##plt.plot(x, z)
-    ##plt.subplot(2,1,2)
-    ##plt.plot(y, z)
-    ##plt.show()
-    #
-    ##x, y = np.meshgrid(x, y)
-    ##
-    ##z = np.meshgrid(z)
-    #
-    #
-    ##plt.figure()
-    ##plt.imshow(z)
-    ##plt.show()
-    #
-    ##print x
-    ##print y
-    ##print z
-    #
-    ##plt.figure()
-    ##X,Y = np.meshgrid(x,y)
-    ##Z = z.reshape(len(y),len(x))
-    ##plt.pcolormesh(X,Y,Z)
-    ##
-    ##plt.show()
-    #
-    ##b = np.concatenate(([x], [y], [z]), axis=0).T
-    ##
-    ##plt.figure()
-    ##plt.pcolor(b)
-    ##plt.show()
-    #
-    #plt.figure()
-    #plt.plot(x, z)
-    #plt.show()
+    #metadata_azel(beam, time_stamp, ddir)
 
-    
+    #data = np.loadtxt("2018-06-28-00:22:10.azel")
+    #plt.figure()
+    #plt.plot(data[:,0], data[:,1])
+    #plt.plot(data[:,0], data[:,2])
+    #plt.plot(data[:,1], data[:,2])
+    #plt.show()

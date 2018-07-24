@@ -365,6 +365,9 @@ if __name__ == "__main__":
     time_stamp = "2018-06-30-12:58:45"
     time_stamp = "2018-06-30-13:32:19"
     time_stamp = "2018-06-30-13:57:18"
+    time_stamp = "2018-06-30-17:59:09"
+    time_stamp = "2018-06-30-18:05:07"
+    time_stamp = "2018-06-30-18:30:50"
     
     beam = 0
     #ddir       = "/beegfs/DENG/JUNE/beam{:d}".format(beam)
@@ -376,7 +379,7 @@ if __name__ == "__main__":
     time_sample1, direction_sample1, direction_delta1, power_sample1 = main(beam, time_stamp, ddir)
     
     freq = 200
-    #freq = 269
+    freq = 269
     plt.figure()
     plt.subplot(2,1,1)
     plt.plot(direction_sample[:,0] * 180/np.pi, power_sample[:,freq])

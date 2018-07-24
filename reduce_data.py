@@ -70,85 +70,107 @@ def direction_cal(beam, time_stamp, ddir, time):
 
     return direction_interp
 
-def main(beam, time_stamp, ddir, src, limit):
+def main(beam, time_stamp, ddir, src):
     time, power = power_cal(beam, time_stamp, ddir)
     direction = direction_cal(beam, time_stamp, ddir, time)
-
+    
     # 3C286
     beam = ephem.FixedBody()
     # Effelsberg
     eff = ephem.Observer()
     eff.long, eff.lat = '6.883611111', '50.52483333'
 
-    deled = 0
     radec_delta = []
     azalt_delta = []
-    time  = list(time)
-    print time
-    power = list(power)
     len_direction = len(direction)
     for i in range(len_direction):
         delta_tmp = []
-        eff.date = time[i - deled] - 15019.5
-        beam._ra, beam._dec = direction[i - deled,0], direction[i - deled,1]
+        eff.date = time[i] - 15019.5
+        beam._ra, beam._dec = direction[i,0], direction[i,1]
         
         beam.compute(eff)
         src.compute(eff)
 
         daz  = beam.az - src.az
-        dalt = beam.alt - src.alt
+        dalt = beam.alt - src.alt        
         dra  = beam.ra - src.ra
         ddec = beam.dec - src.dec
         
-        if (abs(daz) > limit or abs(dalt) > limit or abs(dra) > limit or abs(ddec) > limit):
-            del time[i - deled]
-            del power[i - deled]
-            
-            deled = deled + 1
-        else:
-            azalt_delta.append([daz, dalt])
-            radec_delta.append([dra, ddec])
+        azalt_delta.append([daz, dalt])
+        radec_delta.append([dra, ddec])
+        
     azalt_delta = np.array(azalt_delta)
     radec_delta = np.array(radec_delta)
     
-    return np.array(time), radec_delta, azalt_delta, np.array(power)
-
+    return time, radec_delta, azalt_delta, power
+    
 if __name__ == "__main__":
+    src        = ephem.FixedBody()
+
     beam       = 0
     time_stamp = "2018-06-29-17:44:40"
-    #time_stamp = "2018-06-29-18:13:02"
-    #time_stamp = '2018-06-26-20:01:17'
-    #time_stamp = "2018-06-29-15:49:37"
-    #time_stamp = "2018-06-30-13:05:31"
-    time_stamp = "2018-06-30-13:32:19"
+    
+    #beam       = 0
+    #time_stamp = "2018-06-26-19:30:02"
+    #beam       = 1
+    #time_stamp = "2018-06-26-19:30:02"
+    #beam       = 2
+    #time_stamp = "2018-06-26-19:29:59"
+    #beam       = 3
+    #time_stamp = "2018-06-26-19:29:58"
+    #beam       = 4
+    #time_stamp = "2018-06-26-19:29:53"
+    #beam       = 5
+    #time_stamp = "2018-06-26-19:29:53"
+    #beam       = 6
+    #time_stamp = "2018-06-26-19:29:35"
+    #beam       = 7
+    #time_stamp = "2018-06-26-19:29:35"
+    #beam       = 8
+    #time_stamp = "2018-06-26-19:29:29"
+    
+    #beam       = 0
+    #time_stamp = "2018-06-27-13:40:30"
+    #beam       = 1
+    #time_stamp = "2018-06-27-13:40:26"
+    #beam       = 2
+    #time_stamp = "2018-06-27-13:39:39"
+    #beam       = 3
+    #time_stamp = "2018-06-27-13:39:38"
+    #beam       = 4
+    #time_stamp = "2018-06-27-13:39:38"
+    #beam       = 5
+    #time_stamp = "2018-06-27-13:39:36"
+    #beam       = 6
+    #time_stamp = "2018-06-27-13:39:44"
+    #beam       = 7
+    #time_stamp = "2018-06-27-13:39:42"
+    #beam       = 8
+    #time_stamp = "2018-06-27-13:39:41"
 
-    radec = 0
+    src._ra, src._dec = "13:31:08.3", "+30:30:33"
+    
     freq = 210
-    begin = 10
-    end   = -100
-    limit = 36.0 / 60 * np.pi / 180.0 # radian, two scan range
-    src   = ephem.FixedBody()
-    src._ra, src._dec = "13:31:08.28556", "+30:30:32.4990"
-    # 3C147
-    #src._ra, src._dec = "05:42:36.2646", "+49:51:07.083"
-    ddir       = "/beegfs/DENG/docker/beam{:d}".format(beam)
-    time, radec_delta, azalt_delta, power = main(beam, time_stamp, ddir, src, limit)
+    ddir = "/beegfs/DENG/docker/beam{:d}".format(beam)
+    time, radec_delta, azalt_delta, power = main(beam, time_stamp, ddir, src)
 
     plt.figure()
     plt.subplot(2,1,1)
-    plt.plot(radec_delta[begin:end,0], radec_delta[begin:end,1])
+    plt.plot(radec_delta[:,0], radec_delta[:,1])
     plt.subplot(2,1,2)
-    plt.plot(azalt_delta[begin:end,0], azalt_delta[begin:end,1])
+    plt.plot(azalt_delta[:,0], azalt_delta[:,1])
     plt.show()
 
-    if radec == 1:
-        x = radec_delta[begin:end,0]
-        y = radec_delta[begin:end,1]
-    else:
-        x = azalt_delta[begin:end,0]
-        y = azalt_delta[begin:end,1]
+    begin = 100
+    end   = -100
+    x = radec_delta[begin:end, 0]
+    y = radec_delta[begin:end, 1]
     z = power[begin:end, freq]
 
+    plt.figure()
+    plt.plot(x,y)
+    plt.show()
+    
     plt.figure()
     plt.subplot(2,1,1)
     plt.plot(x, z)
@@ -163,23 +185,28 @@ if __name__ == "__main__":
     maxy = max(y) - yinterval * 0.1
     miny = min(y) + yinterval * 0.1
 
-    #minx, maxx = -8.5, 8.5
-    #miny, maxy = -8.5, 8.5
+    #minx, maxx, miny, maxy = -10 * np.pi / 180.0 / 60.0, 10 * np.pi / 180.0 / 60.0, -10 * np.pi / 180.0 / 60.0, 10 * np.pi / 180.0 / 60.0
     
     xi = np.linspace(minx, maxx,len(x))
     yi = np.linspace(miny, maxy,len(y))
-
+    
     print minx -maxx, miny - maxy
     print xinterval, yinterval
+    print minx * 60 * 180 / np.pi, maxx * 60 * 180 / np.pi, miny * 60 * 180 / np.pi, maxy * 60 * 180 / np.pi
 
-    print maxx, minx, maxy, miny
     X,Y= np.meshgrid(xi,yi)
-
     zi = griddata((x, y), z, (X,Y), method='linear')
 
     plt.figure()
-    #plt.imshow(zi, interpolation = 'hanning', aspect="auto", extent = [minx, maxx, miny, maxy])
-    plt.imshow(zi, interpolation = 'hanning', aspect="auto")#, extent = [-10, 10, -10, 10])
-    plt.xlabel("Azimuth offset (arcmin)")
-    plt.ylabel("Elevation offset (arcmin)")
+
+    plt.imshow(zi, interpolation = 'hanning', aspect="auto", extent = [minx * 60 * 180 / np.pi, maxx * 60 * 180 / np.pi, miny * 60 * 180 / np.pi, maxy * 60 * 180 / np.pi])
+    plt.xlabel("RA offset (arcmin)")
+    plt.ylabel("DEC offset (arcmin)")
     plt.show()
+
+    print np.shape(radec_delta[begin:end, :])
+    print np.shape(power[begin:end, :])
+    result = np.concatenate((radec_delta[begin:end, :], power[begin:end, :]), axis = 1)
+    print np.shape(result)
+
+    np.savetxt("{:s}.beam{:d}".format(time_stamp, beam), result)

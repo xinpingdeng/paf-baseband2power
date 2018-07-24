@@ -70,84 +70,84 @@ def direction_cal(beam, time_stamp, ddir, time):
 
     return direction_interp
 
-def main(beam, time_stamp, ddir, src, limit):
+def main(beam, time_stamp, ddir, src, limit, scan_coord):
     time, power = power_cal(beam, time_stamp, ddir)
     direction = direction_cal(beam, time_stamp, ddir, time)
-
+    
     # 3C286
     beam = ephem.FixedBody()
     # Effelsberg
     eff = ephem.Observer()
     eff.long, eff.lat = '6.883611111', '50.52483333'
 
-    deled = 0
     radec_delta = []
     azalt_delta = []
     time  = list(time)
-    print time
     power = list(power)
     len_direction = len(direction)
     for i in range(len_direction):
         delta_tmp = []
-        eff.date = time[i - deled] - 15019.5
-        beam._ra, beam._dec = direction[i - deled,0], direction[i - deled,1]
+        eff.date = time[i] - 15019.5
+        beam._ra, beam._dec = direction[i,0], direction[i,1]
         
         beam.compute(eff)
         src.compute(eff)
 
         daz  = beam.az - src.az
         dalt = beam.alt - src.alt
+        
         dra  = beam.ra - src.ra
         ddec = beam.dec - src.dec
         
-        if (abs(daz) > limit or abs(dalt) > limit or abs(dra) > limit or abs(ddec) > limit):
-            del time[i - deled]
-            del power[i - deled]
-            
-            deled = deled + 1
-        else:
-            azalt_delta.append([daz, dalt])
-            radec_delta.append([dra, ddec])
+        azalt_delta.append([daz, dalt])
+        radec_delta.append([dra, ddec])
     azalt_delta = np.array(azalt_delta)
     radec_delta = np.array(radec_delta)
-    
-    return np.array(time), radec_delta, azalt_delta, np.array(power)
+        
+    if scan_coord == 1:
+        index = abs(np.gradient(radec_delta[:,1])) < limit
+    else:
+        index = abs(np.gradient(azalt_delta[:,1])) < limit
+
+    return np.array(time)[index][3:-3], radec_delta[index][3:-3], azalt_delta[index][3:-3], np.array(power)[index][3:-3]
+    #return np.array(time)[index][:-3], radec_delta[index][:-3], azalt_delta[index][:-3], np.array(power)[index][:-3]
 
 if __name__ == "__main__":
+    src   = ephem.FixedBody()
     beam       = 0
     time_stamp = "2018-06-29-17:44:40"
-    #time_stamp = "2018-06-29-18:13:02"
-    #time_stamp = '2018-06-26-20:01:17'
-    #time_stamp = "2018-06-29-15:49:37"
-    #time_stamp = "2018-06-30-13:05:31"
+    #time_stamp = "2018-06-30-13:32:19"
     time_stamp = "2018-06-30-13:32:19"
-
-    radec = 0
+    #time_stamp = "2018-06-30-13:05:31"
+    src._ra, src._dec = "13:31:08.28556", "+30:30:32.4990" # 3C286
+    
+    #time_stamp = "2018-06-30-13:57:18"
+    ###src._ra, src._dec = "13:31:08.28556", "+30:30:32.4990" # 3C286
+    #src._ra, src._dec = "05:42:36.2646", "+49:51:07.083" # 3C147
+    
+    scan_coord = 0
     freq = 210
-    begin = 10
-    end   = -100
-    limit = 36.0 / 60 * np.pi / 180.0 # radian, two scan range
-    src   = ephem.FixedBody()
-    src._ra, src._dec = "13:31:08.28556", "+30:30:32.4990"
-    # 3C147
-    #src._ra, src._dec = "05:42:36.2646", "+49:51:07.083"
+    limit = 2E-5
     ddir       = "/beegfs/DENG/docker/beam{:d}".format(beam)
-    time, radec_delta, azalt_delta, power = main(beam, time_stamp, ddir, src, limit)
+    time, radec_delta, azalt_delta, power = main(beam, time_stamp, ddir, src, limit, scan_coord)
 
     plt.figure()
     plt.subplot(2,1,1)
-    plt.plot(radec_delta[begin:end,0], radec_delta[begin:end,1])
+    plt.plot(radec_delta[:,0], radec_delta[:,1])
     plt.subplot(2,1,2)
-    plt.plot(azalt_delta[begin:end,0], azalt_delta[begin:end,1])
+    plt.plot(azalt_delta[:,0], azalt_delta[:,1])
     plt.show()
 
-    if radec == 1:
-        x = radec_delta[begin:end,0]
-        y = radec_delta[begin:end,1]
+    if scan_coord == 1:  # Scan in coordinate system, we do not need to convert it to azimuth and elevation
+        x = radec_delta[:-100,0]
+        y = radec_delta[:-100,1]
     else:
-        x = azalt_delta[begin:end,0]
-        y = azalt_delta[begin:end,1]
-    z = power[begin:end, freq]
+        x = azalt_delta[:-100,0]
+        y = azalt_delta[:-100,1]
+        
+    x = radec_delta[100:-100,0]
+    y = radec_delta[100:-100,1]
+    z = power[100:-100, freq]
 
     plt.figure()
     plt.subplot(2,1,1)
@@ -163,23 +163,22 @@ if __name__ == "__main__":
     maxy = max(y) - yinterval * 0.1
     miny = min(y) + yinterval * 0.1
 
-    #minx, maxx = -8.5, 8.5
-    #miny, maxy = -8.5, 8.5
+    minx, maxx, miny, maxy = -10 * np.pi / 180.0 / 60.0, 10 * np.pi / 180.0 / 60.0, -10 * np.pi / 180.0 / 60.0, 10 * np.pi / 180.0 / 60.0
     
     xi = np.linspace(minx, maxx,len(x))
     yi = np.linspace(miny, maxy,len(y))
-
+    
     print minx -maxx, miny - maxy
     print xinterval, yinterval
+    print minx * 60 * 180 / np.pi, maxx * 60 * 180 / np.pi, miny * 60 * 180 / np.pi, maxy * 60 * 180 / np.pi
 
-    print maxx, minx, maxy, miny
     X,Y= np.meshgrid(xi,yi)
-
     zi = griddata((x, y), z, (X,Y), method='linear')
 
     plt.figure()
-    #plt.imshow(zi, interpolation = 'hanning', aspect="auto", extent = [minx, maxx, miny, maxy])
-    plt.imshow(zi, interpolation = 'hanning', aspect="auto")#, extent = [-10, 10, -10, 10])
-    plt.xlabel("Azimuth offset (arcmin)")
-    plt.ylabel("Elevation offset (arcmin)")
+
+    plt.imshow(zi, interpolation = 'hanning', aspect="auto", extent = [minx * 60 * 180 / np.pi, maxx * 60 * 180 / np.pi, miny * 60 * 180 / np.pi, maxy * 60 * 180 / np.pi])
+    plt.xlabel("RA offset (arcmin)")
+    plt.ylabel("DEC offset (arcmin)")
     plt.show()
+    
